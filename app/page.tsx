@@ -1,8 +1,12 @@
-export default function Home() {
-  return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-2">
-      <h1 className="text-2xl font-semibold">StudyBuddy</h1>
-      <p className="text-muted-foreground">Under construction.</p>
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function Home() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  redirect(user ? "/dashboard" : "/login");
 }
