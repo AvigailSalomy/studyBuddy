@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -29,6 +30,9 @@ export default async function DashboardPage() {
       <p className="text-muted-foreground">
         Dashboard is under construction — coming in a later milestone.
       </p>
+      <Link href="/profile" className="text-sm underline underline-offset-4">
+        Edit your profile
+      </Link>
       <SignOutButton />
     </div>
   );

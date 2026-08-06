@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { OnboardingForm } from "@/components/onboarding-form";
+import { ProfileEditForm } from "@/components/profile-edit-form";
 import {
   Card,
   CardContent,
@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default async function OnboardingPage() {
+export default async function ProfilePage() {
   const supabase = await createClient();
 
   const {
@@ -20,28 +20,35 @@ export default async function OnboardingPage() {
     redirect("/login");
   }
 
-  const { data: existingProfile } = await supabase
+  const { data: profile } = await supabase
     .from("profiles")
-    .select("id")
+    .select("full_name, institution, faculty, degree, study_year")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (existingProfile) {
-    redirect("/dashboard");
+  if (!profile) {
+    redirect("/onboarding");
   }
+
+  const profileDefaultValues = {
+    fullName: profile.full_name,
+    institution: profile.institution,
+    faculty: profile.faculty,
+    degree: profile.degree,
+    studyYear: profile.study_year,
+  };
 
   return (
     <div className="flex min-h-svh items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Complete your profile</CardTitle>
+          <CardTitle>Academic details</CardTitle>
           <CardDescription>
-            Tell us about your studies so we can find the right groups for
-            you. You can add your courses afterward from your profile.
+            View and update your academic profile.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <OnboardingForm />
+          <ProfileEditForm defaultValues={profileDefaultValues} />
         </CardContent>
       </Card>
     </div>
