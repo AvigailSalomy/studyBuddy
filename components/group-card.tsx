@@ -1,9 +1,21 @@
 import Link from "next/link";
-import { GROUP_TYPE_LABELS, type GroupCardData } from "@/types/group";
+import {
+  GROUP_CARD_STATUS_LABELS,
+  GROUP_TYPE_LABELS,
+  type GroupCardData,
+  type GroupCardStatus,
+} from "@/types/group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function GroupCard({ group }: { group: GroupCardData }) {
-  const memberCount = group.group_members[0]?.count ?? 0;
+export function GroupCard({
+  group,
+  memberCount,
+  status,
+}: {
+  group: GroupCardData;
+  memberCount: number;
+  status: GroupCardStatus | null;
+}) {
   const isOnlineLink = group.location_or_link
     ? /^https?:\/\//i.test(group.location_or_link)
     : false;
@@ -31,9 +43,15 @@ export function GroupCard({ group }: { group: GroupCardData }) {
                 : group.location_or_link
               : "Location not specified"}
           </p>
-          <span className="mt-1 text-sm font-medium text-primary underline underline-offset-4">
-            View group →
-          </span>
+          {status ? (
+            <span className="mt-1 inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-xs font-medium">
+              {GROUP_CARD_STATUS_LABELS[status]}
+            </span>
+          ) : (
+            <span className="mt-1 text-sm font-medium text-primary underline underline-offset-4">
+              View group →
+            </span>
+          )}
         </CardContent>
       </Card>
     </Link>

@@ -59,6 +59,7 @@ export function DashboardFilters({
           placeholder="Search by course name"
           value={course}
           onChange={(e) => setCourse(e.target.value)}
+          autoComplete="off"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -68,6 +69,7 @@ export function DashboardFilters({
           placeholder="Any faculty"
           value={faculty}
           onChange={(e) => setFaculty(e.target.value)}
+          autoComplete="off"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -77,6 +79,7 @@ export function DashboardFilters({
           placeholder="Any degree"
           value={degree}
           onChange={(e) => setDegree(e.target.value)}
+          autoComplete="off"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -89,6 +92,7 @@ export function DashboardFilters({
           placeholder="Any year"
           value={year}
           onChange={(e) => setYear(e.target.value)}
+          autoComplete="off"
         />
       </div>
     </div>

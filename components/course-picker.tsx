@@ -89,6 +89,7 @@ export function CoursePicker({
         placeholder="Search or add a course..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        autoComplete="off"
       />
 
       {trimmedQuery.length > 0 && searching && (
