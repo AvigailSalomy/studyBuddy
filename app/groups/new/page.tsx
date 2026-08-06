@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ProfileEditForm } from "@/components/profile-edit-form";
+import { GroupCreateForm } from "@/components/group-create-form";
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default async function ProfilePage() {
+export default async function NewGroupPage() {
   const supabase = await createClient();
 
   const {
@@ -23,21 +23,13 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, institution, faculty, degree, study_year")
+    .select("degree, study_year")
     .eq("id", user.id)
     .maybeSingle();
 
   if (!profile) {
     redirect("/onboarding");
   }
-
-  const profileDefaultValues = {
-    fullName: profile.full_name,
-    institution: profile.institution,
-    faculty: profile.faculty,
-    degree: profile.degree,
-    studyYear: profile.study_year,
-  };
 
   return (
     <div className="flex min-h-svh flex-col items-center gap-4 p-4 py-12">
@@ -48,13 +40,16 @@ export default async function ProfilePage() {
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Academic details</CardTitle>
+          <CardTitle>Create a group</CardTitle>
           <CardDescription>
-            View and update your academic profile.
+            Start a new study or project group.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProfileEditForm defaultValues={profileDefaultValues} />
+          <GroupCreateForm
+            defaultDegree={profile.degree}
+            defaultYear={profile.study_year}
+          />
         </CardContent>
       </Card>
     </div>
