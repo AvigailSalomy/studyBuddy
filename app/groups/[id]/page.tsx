@@ -19,8 +19,14 @@ import {
   type GroupMemberRow,
 } from "@/types/group-member";
 import type { PendingJoinRequest } from "@/types/join-request";
+import type { MaterialRow } from "@/types/material";
 import { JoinRequestButton } from "@/components/join-request-button";
 import { JoinRequestsSection } from "@/components/join-requests-section";
+import { MaterialUploadForm } from "@/components/material-upload-form";
+import { MaterialDownloadButton } from "@/components/material-download-button";
+import { MaterialDeleteButton } from "@/components/material-delete-button";
+import { MATERIAL_CATEGORY_LABELS } from "@/schemas/materials";
+import { formatFileSize } from "@/lib/format";
 
 export default async function GroupDetailPage({
   params,
@@ -138,17 +144,28 @@ export default async function GroupDetailPage({
   const memberCount =
     (memberCounts as GroupMemberCountRow[] | null)?.[0]?.member_count ?? 0;
 
-  // The full roster is RLS-restricted to fellow members (unchanged,
-  // existing group_members_select_fellow_members policy) -- only
-  // fetched (and only renders) when the viewer is themself a member.
-  const { data: members } = isMember
-    ? await supabase
-        .from("group_members")
-        .select("role, profile:profiles(id, full_name)")
-        .eq("group_id", id)
-        .order("joined_at", { ascending: true })
-        .returns<GroupMemberRow[]>()
-    : { data: null };
+  // The full roster and the materials list are both RLS-restricted to
+  // fellow members (group_members_select_fellow_members /
+  // materials_select_members, unchanged) -- only fetched (and only
+  // rendered) when the viewer is themself a member.
+  const [{ data: members }, { data: materials }] = isMember
+    ? await Promise.all([
+        supabase
+          .from("group_members")
+          .select("role, profile:profiles(id, full_name)")
+          .eq("group_id", id)
+          .order("joined_at", { ascending: true })
+          .returns<GroupMemberRow[]>(),
+        supabase
+          .from("materials")
+          .select(
+            "id, title, file_name, category, file_size, created_at, uploader:profiles(id, full_name)",
+          )
+          .eq("group_id", id)
+          .order("created_at", { ascending: false })
+          .returns<MaterialRow[]>(),
+      ])
+    : [{ data: null }, { data: null }];
 
   return (
     <div className="mx-auto flex min-h-svh max-w-md flex-col gap-4 p-4 py-12">
@@ -221,6 +238,49 @@ export default async function GroupDetailPage({
                 <span className="text-muted-foreground">
                   {GROUP_MEMBER_ROLE_LABELS[member.role]}
                 </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {isMember && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Materials</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 text-sm">
+            <MaterialUploadForm groupId={group.id} />
+
+            {(materials ?? []).length === 0 && (
+              <p className="text-muted-foreground">
+                No materials uploaded yet.
+              </p>
+            )}
+
+            {(materials ?? []).map((material) => (
+              <div
+                key={material.id}
+                className="flex items-center justify-between gap-2 rounded-md border p-3"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">{material.title}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {material.file_name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {MATERIAL_CATEGORY_LABELS[material.category]} ·{" "}
+                    {material.uploader.full_name} ·{" "}
+                    {new Date(material.created_at).toLocaleDateString()} ·{" "}
+                    {formatFileSize(material.file_size)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MaterialDownloadButton materialId={material.id} />
+                  {material.uploader.id === user.id && (
+                    <MaterialDeleteButton materialId={material.id} />
+                  )}
+                </div>
               </div>
             ))}
           </CardContent>
