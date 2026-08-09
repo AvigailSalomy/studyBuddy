@@ -10,6 +10,7 @@ import {
 } from "@/schemas/groups";
 import { CoursePicker } from "@/components/course-picker";
 import type { Course } from "@/types/course";
+import { GROUP_TYPE_LABELS } from "@/types/group";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,7 +103,15 @@ export function GroupDetailsForm({
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a type" />
+                {/* Base UI's SelectValue doesn't resolve a label from
+                    SelectItem children on its own -- without this it
+                    shows the raw "study"/"project" value instead of the
+                    friendly label (same fix as the Tasks dropdowns). */}
+                <SelectValue placeholder="Select a type">
+                  {(value: "study" | "project" | null) =>
+                    value ? GROUP_TYPE_LABELS[value] : "Select a type"
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="study">Study group</SelectItem>

@@ -20,11 +20,15 @@ import {
 } from "@/types/group-member";
 import type { PendingJoinRequest } from "@/types/join-request";
 import type { MaterialRow } from "@/types/material";
+import type { TaskRow } from "@/types/task";
 import { JoinRequestButton } from "@/components/join-request-button";
 import { JoinRequestsSection } from "@/components/join-requests-section";
 import { MaterialUploadForm } from "@/components/material-upload-form";
 import { MaterialDownloadButton } from "@/components/material-download-button";
 import { MaterialDeleteButton } from "@/components/material-delete-button";
+import { TaskCreateForm } from "@/components/task-create-form";
+import { TaskStatusControl } from "@/components/task-status-control";
+import { TaskDeleteButton } from "@/components/task-delete-button";
 import { MATERIAL_CATEGORY_LABELS } from "@/schemas/materials";
 import { formatFileSize } from "@/lib/format";
 
@@ -144,11 +148,11 @@ export default async function GroupDetailPage({
   const memberCount =
     (memberCounts as GroupMemberCountRow[] | null)?.[0]?.member_count ?? 0;
 
-  // The full roster and the materials list are both RLS-restricted to
+  // The full roster, materials, and tasks are all RLS-restricted to
   // fellow members (group_members_select_fellow_members /
-  // materials_select_members, unchanged) -- only fetched (and only
-  // rendered) when the viewer is themself a member.
-  const [{ data: members }, { data: materials }] = isMember
+  // materials_select_members / tasks_select_members, unchanged) -- only
+  // fetched (and only rendered) when the viewer is themself a member.
+  const [{ data: members }, { data: materials }, { data: tasks }] = isMember
     ? await Promise.all([
         supabase
           .from("group_members")
@@ -164,8 +168,20 @@ export default async function GroupDetailPage({
           .eq("group_id", id)
           .order("created_at", { ascending: false })
           .returns<MaterialRow[]>(),
+        supabase
+          .from("tasks")
+          // profiles!assignee_id disambiguates the embed: tasks has two
+          // FKs to profiles (created_by and assignee_id), so a plain
+          // profiles(...) embed is ambiguous to PostgREST and errors
+          // out rather than guessing which relationship to follow.
+          .select(
+            "id, title, description, status, due_date, created_at, created_by, assignee:profiles!assignee_id(id, full_name)",
+          )
+          .eq("group_id", id)
+          .order("created_at", { ascending: false })
+          .returns<TaskRow[]>(),
       ])
-    : [{ data: null }, { data: null }];
+    : [{ data: null }, { data: null }, { data: null }];
 
   return (
     <div className="mx-auto flex min-h-svh max-w-md flex-col gap-4 p-4 py-12">
@@ -279,6 +295,51 @@ export default async function GroupDetailPage({
                   <MaterialDownloadButton materialId={material.id} />
                   {material.uploader.id === user.id && (
                     <MaterialDeleteButton materialId={material.id} />
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {isMember && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Tasks</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 text-sm">
+            <TaskCreateForm
+              groupId={group.id}
+              members={(members ?? []).map((member) => member.profile)}
+            />
+
+            {(tasks ?? []).length === 0 && (
+              <p className="text-muted-foreground">No tasks yet.</p>
+            )}
+
+            {(tasks ?? []).map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center justify-between gap-2 rounded-md border p-3"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">{task.title}</span>
+                  {task.description && (
+                    <span className="text-xs text-muted-foreground">
+                      {task.description}
+                    </span>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {task.assignee?.full_name ?? "Unassigned"}
+                    {task.due_date &&
+                      ` · Due ${new Date(task.due_date).toLocaleDateString()}`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TaskStatusControl taskId={task.id} status={task.status} />
+                  {task.created_by === user.id && (
+                    <TaskDeleteButton taskId={task.id} />
                   )}
                 </div>
               </div>
