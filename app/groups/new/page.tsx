@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { AppShell } from "@/components/app-shell/app-shell";
 import { GroupCreateForm } from "@/components/group-create-form";
 import {
   Card,
@@ -23,7 +25,7 @@ export default async function NewGroupPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("degree, study_year")
+    .select("full_name, degree, study_year")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -32,13 +34,15 @@ export default async function NewGroupPage() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col items-center gap-4 p-4 py-12">
-      <div className="w-full max-w-md">
-        <Link href="/dashboard" className="text-sm underline underline-offset-4">
-          ← Back to dashboard
-        </Link>
-      </div>
-      <Card className="w-full max-w-md">
+    <AppShell active="my-groups" userName={profile.full_name}>
+      <Link
+        href="/dashboard"
+        className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+        Back to dashboard
+      </Link>
+      <Card className="w-full max-w-xl rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle>Create a group</CardTitle>
           <CardDescription>
@@ -52,6 +56,6 @@ export default async function NewGroupPage() {
           />
         </CardContent>
       </Card>
-    </div>
+    </AppShell>
   );
 }

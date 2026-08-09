@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { AppShell } from "@/components/app-shell/app-shell";
 import { GroupEditForm } from "@/components/group-edit-form";
 import {
   Card,
@@ -35,7 +37,7 @@ export default async function EditGroupPage({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, full_name")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -46,7 +48,7 @@ export default async function EditGroupPage({
   const { data: rows, error } = await supabase
     .from("groups")
     .select(
-      "id, name, description, group_type, target_degree, target_year, location_or_link, max_members, owner_id, course:courses!inner(id, course_code, course_name, faculty, institution), group_members(count)",
+      "id, name, description, group_type, target_degree, target_year, location_or_link, max_members, owner_id, created_at, course:courses!inner(id, course_code, course_name, faculty, institution), group_members(count)",
     )
     .eq("id", id)
     .returns<GroupDetailData[]>();
@@ -79,16 +81,15 @@ export default async function EditGroupPage({
   }
 
   return (
-    <div className="flex min-h-svh flex-col items-center gap-4 p-4 py-12">
-      <div className="w-full max-w-md">
-        <Link
-          href={`/groups/${id}`}
-          className="text-sm underline underline-offset-4"
-        >
-          ← Back to group
-        </Link>
-      </div>
-      <Card className="w-full max-w-md">
+    <AppShell active="group" userName={profile.full_name}>
+      <Link
+        href={`/groups/${id}`}
+        className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+        Back to group
+      </Link>
+      <Card className="w-full max-w-xl rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle>Edit group</CardTitle>
           <CardDescription>Update your group&apos;s details.</CardDescription>
@@ -97,6 +98,6 @@ export default async function EditGroupPage({
           <GroupEditForm group={group} />
         </CardContent>
       </Card>
-    </div>
+    </AppShell>
   );
 }

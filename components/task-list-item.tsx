@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Calendar, Pencil } from "lucide-react";
 import type { TaskRow } from "@/types/task";
 import { TaskStatusControl } from "@/components/task-status-control";
 import { TaskDeleteButton } from "@/components/task-delete-button";
 import { TaskEditForm } from "@/components/task-edit-form";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
 // Owns the show/edit toggle for a single task row -- extracted out of
@@ -28,7 +30,7 @@ export function TaskListItem({
 
   if (isEditing) {
     return (
-      <div className="rounded-md border p-3">
+      <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
         <TaskEditForm
           task={task}
           members={members}
@@ -43,42 +45,50 @@ export function TaskListItem({
   }
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md border p-3">
-      <div className="flex flex-col">
-        <span className="font-medium">{task.title}</span>
-        {task.description && (
-          <span className="text-xs text-muted-foreground">
-            {task.description}
-          </span>
-        )}
-        <span className="text-xs text-muted-foreground">
-          {task.assignee?.full_name ?? "Unassigned"}
-          {task.due_date &&
-            // Explicit locale so the server-rendered HTML and the
-            // client's hydration pass produce identical text (an
-            // unspecified locale falls back to each environment's own
-            // default, which differ between server and browser --
-            // that mismatch, not a real data difference, is what was
-            // reported). timeZone: "UTC" matters separately: due_date
-            // is a plain `date` column with no time-of-day, and
-            // new Date("2026-08-26") parses as UTC midnight -- without
-            // pinning the timezone, toLocaleDateString would convert
-            // that instant into the *runtime's* local zone and could
-            // display the day before for viewers behind UTC.
-            ` · Due ${new Date(task.due_date).toLocaleDateString("en-GB", { timeZone: "UTC" })}`}
-        </span>
-      </div>
-      <div className="flex items-center gap-2">
-        <TaskStatusControl taskId={task.id} status={task.status} />
+    <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm leading-snug font-medium">{task.title}</span>
         {isCreator && (
           <Button
-            size="sm"
-            variant="outline"
+            size="icon-xs"
+            variant="ghost"
             onClick={() => setIsEditing(true)}
+            aria-label="Edit task"
           >
-            Edit
+            <Pencil className="size-3.5" />
           </Button>
         )}
+      </div>
+
+      {task.description && (
+        <p className="line-clamp-2 text-xs text-muted-foreground">
+          {task.description}
+        </p>
+      )}
+
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Avatar name={task.assignee?.full_name ?? "?"} size="sm" />
+        {task.assignee?.full_name ?? "Unassigned"}
+      </span>
+
+      {task.due_date && (
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Calendar className="size-3.5" />
+          {/* Explicit locale (en-GB) + timeZone: "UTC" -- due_date is a
+              plain `date` column with no time-of-day, and new
+              Date("2026-08-26") parses as UTC midnight, so pinning UTC
+              here (not just the locale) avoids both a hydration
+              mismatch and an off-by-one-day display for viewers behind
+              UTC. */}
+          Due{" "}
+          {new Date(task.due_date).toLocaleDateString("en-GB", {
+            timeZone: "UTC",
+          })}
+        </span>
+      )}
+
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <TaskStatusControl taskId={task.id} status={task.status} />
         {isCreator && <TaskDeleteButton taskId={task.id} />}
       </div>
     </div>

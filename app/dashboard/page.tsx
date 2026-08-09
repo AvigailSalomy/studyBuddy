@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Plus, Users, Compass } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { SignOutButton } from "@/components/sign-out-button";
+import { AppShell, type ActiveNav } from "@/components/app-shell/app-shell";
 import { DashboardFilters } from "@/components/dashboard-filters";
+import { DashboardHome } from "@/components/dashboard/dashboard-home";
 import { GroupCard } from "@/components/group-card";
+import { EmptyState } from "@/components/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { normalizeWhitespace } from "@/lib/text";
 import type {
@@ -11,12 +14,19 @@ import type {
   GroupCardStatus,
   GroupMemberCountRow,
 } from "@/types/group";
+import type {
+  DashboardMeetingRow,
+  DashboardTaskRow,
+  OwnerPendingRequest,
+  DashboardGroupPreviewRow,
+} from "@/types/dashboard";
 
 type DashboardSearchParams = {
   course?: string;
   faculty?: string;
   degree?: string;
   year?: string;
+  scope?: string;
 };
 
 export default async function DashboardPage({
@@ -44,6 +54,22 @@ export default async function DashboardPage({
   if (!profile) {
     redirect("/onboarding");
   }
+
+  // Bare /dashboard (no `scope`) is the attention/activity home --
+  // distinct from My Groups (?scope=mine) and Explore Groups
+  // (?scope=explore), which keep the exact filtered-browse behavior
+  // from before this change, unchanged below.
+  if (params.scope !== "mine" && params.scope !== "explore") {
+    return (
+      <DashboardHomeView
+        supabase={supabase}
+        userId={user.id}
+        userName={profile.full_name}
+      />
+    );
+  }
+
+  const scope = params.scope;
 
   // A param key absent entirely (first visit, no query string yet) means
   // "use the profile default"; a key present but empty means the user
@@ -160,31 +186,45 @@ export default async function DashboardPage({
     return null;
   }
 
-  return (
-    <div className="mx-auto flex min-h-svh max-w-3xl flex-col gap-6 p-4 py-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Welcome, {profile.full_name}</h1>
-        <div className="flex items-center gap-2">
-          <Link href="/profile" className={buttonVariants({ variant: "outline" })}>
-            Profile
-          </Link>
-          <SignOutButton />
-        </div>
-      </header>
+  // "My Groups" / "Explore Groups" (sidebar nav) are a presentational
+  // filter over this same already-fetched, already-course/faculty/
+  // degree/year-filtered list -- no extra Supabase query, no RLS/schema
+  // change. "mine" = groups you own or belong to; "explore" = groups
+  // you haven't joined (whether or not a request is pending).
+  const visibleGroups = (groups ?? []).filter((group) => {
+    const status = cardStatus(group);
+    if (scope === "mine") return status === "owner" || status === "member";
+    return status === null || status === "pending";
+  });
 
+  const activeNav: ActiveNav = scope === "mine" ? "my-groups" : "explore";
+  const heading = scope === "mine" ? "My Groups" : "Explore Groups";
+  const subheading =
+    scope === "mine"
+      ? "Groups you own or belong to."
+      : "Groups you haven't joined yet.";
+
+  return (
+    <AppShell active={activeNav} userName={profile.full_name}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-medium">Groups</h2>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
+          <p className="text-sm text-muted-foreground">{subheading}</p>
+        </div>
         <Link href="/groups/new" className={buttonVariants({})}>
+          <Plus className="size-4" />
           Create group
         </Link>
       </div>
 
-      <DashboardFilters
-        initialCourse={courseFilter}
-        initialFaculty={facultyFilter}
-        initialDegree={degreeFilter}
-        initialYear={yearFilter}
-      />
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <DashboardFilters
+          initialCourse={courseFilter}
+          initialFaculty={facultyFilter}
+          initialDegree={degreeFilter}
+          initialYear={yearFilter}
+        />
+      </div>
 
       {error && (
         <p role="alert" className="text-sm text-destructive">
@@ -192,19 +232,33 @@ export default async function DashboardPage({
         </p>
       )}
 
-      {!error && (groups?.length ?? 0) === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No groups match your filters yet. Try widening your search, or{" "}
-          <Link href="/groups/new" className="underline underline-offset-4">
-            create one
-          </Link>
-          .
-        </p>
+      {!error && visibleGroups.length === 0 && (
+        <EmptyState
+          icon={scope === "mine" ? Users : Compass}
+          title={
+            scope === "mine"
+              ? "You haven't joined any groups yet"
+              : "No groups match your filters"
+          }
+          description={
+            scope === "mine"
+              ? "Explore groups or create your own to get started."
+              : "Try widening your search, or create a new group."
+          }
+          action={
+            <Link
+              href={scope === "mine" ? "/dashboard?scope=explore" : "/groups/new"}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              {scope === "mine" ? "Explore groups" : "Create a group"}
+            </Link>
+          }
+        />
       )}
 
-      {!error && groups && groups.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {groups.map((group) => (
+      {!error && visibleGroups.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visibleGroups.map((group) => (
             <GroupCard
               key={group.id}
               group={group}
@@ -214,6 +268,117 @@ export default async function DashboardPage({
           ))}
         </div>
       )}
-    </div>
+    </AppShell>
+  );
+}
+
+// Isolated as its own async function (rather than inlined in
+// DashboardPage) purely so the "home" and "browse" data-fetching paths
+// read as two clearly separate branches, given how different their
+// query shapes are.
+async function DashboardHomeView({
+  supabase,
+  userId,
+  userName,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  userId: string;
+  userName: string;
+}) {
+  // Four independent queries, each a single round-trip regardless of
+  // data volume: RLS (meetings_select_members / tasks_select_members /
+  // join_requests_select_requester_or_owner / group_members_select_
+  // fellow_members) already scopes each one to "my" groups without a
+  // separate "fetch my group ids first" query -- no N+1 here. The
+  // count is requested alongside each limited page of rows (Supabase's
+  // combined count+data fetch) so the summary cards above don't need
+  // their own extra queries either.
+  const [meetingsResult, tasksResult, requestsResult, groupsPreviewResult] =
+    await Promise.all([
+      supabase
+        .from("meetings")
+        .select(
+          "id, title, meeting_time, location_or_link, group:groups(id, name)",
+          { count: "exact" },
+        )
+        .gt("meeting_time", new Date().toISOString())
+        .order("meeting_time", { ascending: true })
+        .limit(5)
+        .returns<DashboardMeetingRow[]>(),
+      // Done tasks are deliberately excluded (not just deprioritized) --
+      // the Dashboard home is "what still needs attention"; completed
+      // tasks remain visible in the group's own Tasks tab.
+      supabase
+        .from("tasks")
+        .select(
+          "id, title, status, due_date, group:groups(id, name)",
+          { count: "exact" },
+        )
+        .eq("assignee_id", userId)
+        .in("status", ["todo", "in_progress"])
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .limit(5)
+        .returns<DashboardTaskRow[]>(),
+      // groups!inner(...) + .eq("group.owner_id", userId) filters on the
+      // embedded resource -- the same pattern this file already used for
+      // course:courses!inner(...) + .ilike("course.course_name", ...)
+      // above. RLS (join_requests_select_requester_or_owner) separately
+      // still allows rows where profile_id = auth.uid() (i.e. requests
+      // *I* filed) through -- this .eq() is what narrows down to "only
+      // where I'm the owner", which is the actual product requirement.
+      supabase
+        .from("join_requests")
+        .select(
+          "id, created_at, profile:profiles(id, full_name, institution, faculty, degree, study_year), group:groups!inner(id, name, owner_id)",
+          { count: "exact" },
+        )
+        .eq("status", "pending")
+        .eq("group.owner_id", userId)
+        .order("created_at", { ascending: true })
+        .returns<OwnerPendingRequest[]>(),
+      // group_members rather than groups: gives `role` directly (no
+      // separate owner_id comparison needed) and, per its own RLS
+      // policy, a user's own membership rows always satisfy
+      // is_group_member(group_id) (the row itself is the proof).
+      supabase
+        .from("group_members")
+        .select(
+          "role, group:groups(id, name, description, group_type, target_degree, target_year, location_or_link, max_members, owner_id, course:courses(id, course_name, faculty))",
+          { count: "exact" },
+        )
+        .eq("profile_id", userId)
+        .order("joined_at", { ascending: false })
+        .limit(4)
+        .returns<DashboardGroupPreviewRow[]>(),
+    ]);
+
+  // Member counts for just the previewed groups (≤4 ids) -- one bulk
+  // RPC call, same as the existing My Groups/Explore Groups view uses
+  // for its whole visible list, not a query per card.
+  const previewGroupIds = (groupsPreviewResult.data ?? []).map(
+    (row) => row.group.id,
+  );
+  const { data: previewMemberCounts } =
+    previewGroupIds.length > 0
+      ? ((await supabase.rpc("group_member_counts", {
+          p_group_ids: previewGroupIds,
+        })) as unknown as { data: GroupMemberCountRow[] | null })
+      : { data: [] as GroupMemberCountRow[] };
+
+  return (
+    <AppShell active="dashboard" userName={userName}>
+      <DashboardHome
+        userName={userName}
+        groupsCount={groupsPreviewResult.count ?? 0}
+        tasksCount={tasksResult.count ?? 0}
+        meetingsCount={meetingsResult.count ?? 0}
+        pendingRequestsCount={requestsResult.count ?? 0}
+        meetings={meetingsResult.data ?? []}
+        tasks={tasksResult.data ?? []}
+        pendingRequests={requestsResult.data ?? []}
+        groupsPreview={groupsPreviewResult.data ?? []}
+        groupsPreviewMemberCounts={previewMemberCounts ?? []}
+      />
+    </AppShell>
   );
 }

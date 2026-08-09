@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { AppShell } from "@/components/app-shell/app-shell";
 import { ProfileEditForm } from "@/components/profile-edit-form";
 import {
   Card,
@@ -40,13 +40,14 @@ export default async function ProfilePage() {
   };
 
   return (
-    <div className="flex min-h-svh flex-col items-center gap-4 p-4 py-12">
-      <div className="w-full max-w-md">
-        <Link href="/dashboard" className="text-sm underline underline-offset-4">
-          ← Back to dashboard
-        </Link>
+    <AppShell active="profile" userName={profile.full_name}>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+        <p className="text-sm text-muted-foreground">
+          View and update your academic details.
+        </p>
       </div>
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-xl rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle>Academic details</CardTitle>
           <CardDescription>
@@ -57,6 +58,6 @@ export default async function ProfilePage() {
           <ProfileEditForm defaultValues={profileDefaultValues} />
         </CardContent>
       </Card>
-    </div>
+    </AppShell>
   );
 }

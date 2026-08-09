@@ -44,6 +44,14 @@ export function DashboardFilters({
       params.set("faculty", faculty);
       params.set("degree", degree);
       params.set("year", year);
+      // Carries the current `scope` (My Groups / Explore Groups, see
+      // app/dashboard/page.tsx) through untouched -- read directly off
+      // the live URL rather than via useSearchParams() so this stays a
+      // plain browser API read with no Suspense-boundary requirement.
+      const currentScope = new URLSearchParams(window.location.search).get(
+        "scope",
+      );
+      if (currentScope) params.set("scope", currentScope);
       router.push(`${pathname}?${params.toString()}`);
     }, 300);
 

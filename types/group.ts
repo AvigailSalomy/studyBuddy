@@ -37,6 +37,8 @@ export const GROUP_CARD_STATUS_LABELS: Record<GroupCardStatus, string> = {
 // Superset of GroupCardData: adds owner_id (to determine edit access) and
 // the full Course (not just id/name/faculty) so the detail/edit pages can
 // pre-fill CoursePicker, which displays/tracks a whole Course object.
+// created_at is used only for display (the Overview tab's Group Info
+// card) -- an existing column, not a schema change.
 export type GroupDetailData = {
   id: string;
   name: string;
@@ -47,6 +49,7 @@ export type GroupDetailData = {
   location_or_link: string | null;
   max_members: number;
   owner_id: string;
+  created_at: string;
   course: Course;
 };
 
