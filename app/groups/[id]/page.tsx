@@ -21,16 +21,18 @@ import {
 import type { PendingJoinRequest } from "@/types/join-request";
 import type { MaterialRow } from "@/types/material";
 import type { TaskRow } from "@/types/task";
+import type { MeetingRow } from "@/types/meeting";
 import { JoinRequestButton } from "@/components/join-request-button";
 import { JoinRequestsSection } from "@/components/join-requests-section";
 import { MaterialUploadForm } from "@/components/material-upload-form";
 import { MaterialDownloadButton } from "@/components/material-download-button";
 import { MaterialDeleteButton } from "@/components/material-delete-button";
 import { TaskCreateForm } from "@/components/task-create-form";
-import { TaskStatusControl } from "@/components/task-status-control";
-import { TaskDeleteButton } from "@/components/task-delete-button";
+import { TaskListItem } from "@/components/task-list-item";
+import { MeetingCreateForm } from "@/components/meeting-create-form";
+import { MeetingListItem } from "@/components/meeting-list-item";
 import { MATERIAL_CATEGORY_LABELS } from "@/schemas/materials";
-import { formatFileSize } from "@/lib/format";
+import { formatFileSize, isHttpUrl } from "@/lib/format";
 
 export default async function GroupDetailPage({
   params,
@@ -91,7 +93,7 @@ export default async function GroupDetailPage({
 
   const isOwner = group.owner_id === user.id;
   const isOnlineLink = group.location_or_link
-    ? /^https?:\/\//i.test(group.location_or_link)
+    ? isHttpUrl(group.location_or_link)
     : false;
 
   const [
@@ -148,40 +150,57 @@ export default async function GroupDetailPage({
   const memberCount =
     (memberCounts as GroupMemberCountRow[] | null)?.[0]?.member_count ?? 0;
 
-  // The full roster, materials, and tasks are all RLS-restricted to
-  // fellow members (group_members_select_fellow_members /
-  // materials_select_members / tasks_select_members, unchanged) -- only
-  // fetched (and only rendered) when the viewer is themself a member.
-  const [{ data: members }, { data: materials }, { data: tasks }] = isMember
-    ? await Promise.all([
-        supabase
-          .from("group_members")
-          .select("role, profile:profiles(id, full_name)")
-          .eq("group_id", id)
-          .order("joined_at", { ascending: true })
-          .returns<GroupMemberRow[]>(),
-        supabase
-          .from("materials")
-          .select(
-            "id, title, file_name, category, file_size, created_at, uploader:profiles(id, full_name)",
-          )
-          .eq("group_id", id)
-          .order("created_at", { ascending: false })
-          .returns<MaterialRow[]>(),
-        supabase
-          .from("tasks")
-          // profiles!assignee_id disambiguates the embed: tasks has two
-          // FKs to profiles (created_by and assignee_id), so a plain
-          // profiles(...) embed is ambiguous to PostgREST and errors
-          // out rather than guessing which relationship to follow.
-          .select(
-            "id, title, description, status, due_date, created_at, created_by, assignee:profiles!assignee_id(id, full_name)",
-          )
-          .eq("group_id", id)
-          .order("created_at", { ascending: false })
-          .returns<TaskRow[]>(),
-      ])
-    : [{ data: null }, { data: null }, { data: null }];
+  // The full roster, materials, tasks, and meetings are all
+  // RLS-restricted to fellow members (group_members_select_fellow_members
+  // / materials_select_members / tasks_select_members /
+  // meetings_select_members, unchanged) -- only fetched (and only
+  // rendered) when the viewer is themself a member.
+  const [{ data: members }, { data: materials }, { data: tasks }, { data: meetings }] =
+    isMember
+      ? await Promise.all([
+          supabase
+            .from("group_members")
+            .select("role, profile:profiles(id, full_name)")
+            .eq("group_id", id)
+            .order("joined_at", { ascending: true })
+            .returns<GroupMemberRow[]>(),
+          supabase
+            .from("materials")
+            .select(
+              "id, title, file_name, category, file_size, created_at, uploader:profiles(id, full_name)",
+            )
+            .eq("group_id", id)
+            .order("created_at", { ascending: false })
+            .returns<MaterialRow[]>(),
+          supabase
+            .from("tasks")
+            // profiles!assignee_id disambiguates the embed: tasks has two
+            // FKs to profiles (created_by and assignee_id), so a plain
+            // profiles(...) embed is ambiguous to PostgREST and errors
+            // out rather than guessing which relationship to follow.
+            .select(
+              "id, title, description, status, due_date, created_at, created_by, assignee:profiles!assignee_id(id, full_name)",
+            )
+            .eq("group_id", id)
+            .order("created_at", { ascending: false })
+            .returns<TaskRow[]>(),
+          supabase
+            .from("meetings")
+            // Upcoming only, soonest first -- past meetings aren't shown
+            // (no separate "past meetings" view requested).
+            // profiles!created_by is only one valid relationship here
+            // (meetings has a single FK to profiles), but the explicit
+            // hint is kept for consistency/defensiveness with the tasks
+            // query above.
+            .select(
+              "id, title, meeting_time, location_or_link, created_by, creator:profiles!created_by(id, full_name)",
+            )
+            .eq("group_id", id)
+            .gt("meeting_time", new Date().toISOString())
+            .order("meeting_time", { ascending: true })
+            .returns<MeetingRow[]>(),
+        ])
+      : [{ data: null }, { data: null }, { data: null }, { data: null }];
 
   return (
     <div className="mx-auto flex min-h-svh max-w-md flex-col gap-4 p-4 py-12">
@@ -287,7 +306,16 @@ export default async function GroupDetailPage({
                   <span className="text-xs text-muted-foreground">
                     {MATERIAL_CATEGORY_LABELS[material.category]} ·{" "}
                     {material.uploader.full_name} ·{" "}
-                    {new Date(material.created_at).toLocaleDateString()} ·{" "}
+                    {/* This page is a Server Component (no "use client"),
+                        so this specific call has no hydration risk --
+                        it only ever renders once, server-side. Explicit
+                        locale added anyway, purely for the same display
+                        convention as the other date displays now use;
+                        timeZone intentionally left unpinned, since
+                        created_at is a genuine timestamptz (unlike
+                        tasks.due_date) and no timezone-behavior change
+                        was requested here. */}
+                    {new Date(material.created_at).toLocaleDateString("en-GB")} ·{" "}
                     {formatFileSize(material.file_size)}
                   </span>
                 </div>
@@ -319,30 +347,35 @@ export default async function GroupDetailPage({
             )}
 
             {(tasks ?? []).map((task) => (
-              <div
+              <TaskListItem
                 key={task.id}
-                className="flex items-center justify-between gap-2 rounded-md border p-3"
-              >
-                <div className="flex flex-col">
-                  <span className="font-medium">{task.title}</span>
-                  {task.description && (
-                    <span className="text-xs text-muted-foreground">
-                      {task.description}
-                    </span>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {task.assignee?.full_name ?? "Unassigned"}
-                    {task.due_date &&
-                      ` · Due ${new Date(task.due_date).toLocaleDateString()}`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <TaskStatusControl taskId={task.id} status={task.status} />
-                  {task.created_by === user.id && (
-                    <TaskDeleteButton taskId={task.id} />
-                  )}
-                </div>
-              </div>
+                task={task}
+                members={(members ?? []).map((member) => member.profile)}
+                currentUserId={user.id}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {isMember && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Meetings</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 text-sm">
+            <MeetingCreateForm groupId={group.id} />
+
+            {(meetings ?? []).length === 0 && (
+              <p className="text-muted-foreground">No upcoming meetings.</p>
+            )}
+
+            {(meetings ?? []).map((meeting) => (
+              <MeetingListItem
+                key={meeting.id}
+                meeting={meeting}
+                currentUserId={user.id}
+              />
             ))}
           </CardContent>
         </Card>

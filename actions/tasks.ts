@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {
-  createTaskSchema,
+  taskDetailsSchema,
   taskStatusSchema,
-  type CreateTaskInput,
+  type TaskDetailsInput,
 } from "@/schemas/tasks";
 
 type ActionResult = { success: true } | { success: false; error: string };
@@ -24,14 +24,21 @@ async function isGroupMember(
   return data !== null;
 }
 
-export async function createTask(
+// Shared by createTask and updateTaskDetails -- both validate and
+// resolve the exact same field set against the same group. Re-verifies
+// the assignee's membership itself (never trusts the client) and
+// rejects a past due date; neither check is expressible as a static
+// Zod rule since both depend on runtime state (the group's current
+// roster, "now").
+async function parseTaskDetails(
+  supabase: Awaited<ReturnType<typeof createClient>>,
   groupId: string,
-  input: CreateTaskInput,
-): Promise<ActionResult> {
-  const parsed = createTaskSchema.safeParse(input);
+  input: TaskDetailsInput,
+) {
+  const parsed = taskDetailsSchema.safeParse(input);
   if (!parsed.success) {
     return {
-      success: false,
+      ok: false as const,
       error: parsed.error.issues[0]?.message ?? "Invalid input.",
     };
   }
@@ -42,16 +49,40 @@ export async function createTask(
   if (dueDate.length > 0) {
     const parsedDate = new Date(dueDate);
     if (Number.isNaN(parsedDate.getTime())) {
-      return { success: false, error: "Invalid due date." };
+      return { ok: false as const, error: "Invalid due date." };
     }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (parsedDate < today) {
-      return { success: false, error: "Due date can't be in the past." };
+      return { ok: false as const, error: "Due date can't be in the past." };
     }
     dueDateValue = dueDate;
   }
 
+  let assigneeIdValue: string | null = null;
+  if (assigneeId.length > 0) {
+    if (!(await isGroupMember(supabase, groupId, assigneeId))) {
+      return {
+        ok: false as const,
+        error: "Selected assignee is not a member of this group.",
+      };
+    }
+    assigneeIdValue = assigneeId;
+  }
+
+  return {
+    ok: true as const,
+    title,
+    description: description.length > 0 ? description : null,
+    assigneeIdValue,
+    dueDateValue,
+  };
+}
+
+export async function createTask(
+  groupId: string,
+  input: TaskDetailsInput,
+): Promise<ActionResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -68,26 +99,18 @@ export async function createTask(
     };
   }
 
-  let assigneeIdValue: string | null = null;
-  if (assigneeId.length > 0) {
-    // Never trust that the client-selected assignee is actually a
-    // member -- re-verify against group_members directly.
-    if (!(await isGroupMember(supabase, groupId, assigneeId))) {
-      return {
-        success: false,
-        error: "Selected assignee is not a member of this group.",
-      };
-    }
-    assigneeIdValue = assigneeId;
+  const parsed = await parseTaskDetails(supabase, groupId, input);
+  if (!parsed.ok) {
+    return { success: false, error: parsed.error };
   }
 
   const { error: insertError } = await supabase.from("tasks").insert({
     group_id: groupId,
     created_by: user.id,
-    assignee_id: assigneeIdValue,
-    title,
-    description: description.length > 0 ? description : null,
-    due_date: dueDateValue,
+    assignee_id: parsed.assigneeIdValue,
+    title: parsed.title,
+    description: parsed.description,
+    due_date: parsed.dueDateValue,
   });
 
   if (insertError) {
@@ -98,11 +121,88 @@ export async function createTask(
   return { success: true };
 }
 
-// Deliberately the only write surface exposed for existing tasks --
+// Product rule: only the original creator may edit a task's details --
+// being the assignee or the group owner does not grant this on its own,
+// same as delete. tasks_update_members (RLS) permits any member to
+// update any column, but this action re-checks created_by explicitly
+// and is the only write surface for these fields, so the actual
+// exposed capability is narrower than what RLS alone would allow --
+// same split already used by updateTaskStatus for the opposite
+// direction (member-wide, but status-only).
+export async function updateTaskDetails(
+  taskId: string,
+  input: TaskDetailsInput,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "You must be logged in." };
+  }
+
+  const { data: task, error: taskError } = await supabase
+    .from("tasks")
+    .select("group_id, created_by")
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (taskError) {
+    return { success: false, error: taskError.message };
+  }
+
+  if (!task) {
+    return {
+      success: false,
+      error: "Task not found, or you don't have access to it.",
+    };
+  }
+
+  if (task.created_by !== user.id) {
+    return {
+      success: false,
+      error: "Only the person who created this task can edit it.",
+    };
+  }
+
+  const parsed = await parseTaskDetails(supabase, task.group_id, input);
+  if (!parsed.ok) {
+    return { success: false, error: parsed.error };
+  }
+
+  // Deliberately never touches status -- that stays exclusively
+  // updateTaskStatus's responsibility, available to every member
+  // regardless of who created the task.
+  const { data: updated, error: updateError } = await supabase
+    .from("tasks")
+    .update({
+      title: parsed.title,
+      description: parsed.description,
+      assignee_id: parsed.assigneeIdValue,
+      due_date: parsed.dueDateValue,
+    })
+    .eq("id", taskId)
+    .eq("created_by", user.id)
+    .select("id")
+    .single();
+
+  if (updateError || !updated) {
+    return {
+      success: false,
+      error: updateError?.message ?? "Couldn't update this task.",
+    };
+  }
+
+  revalidatePath(`/groups/${task.group_id}`);
+  return { success: true };
+}
+
+// Deliberately the only write surface exposed for task status --
 // tasks_update_members (RLS) permits updating any column, but this
 // action only ever sends { status }, keeping the actual exposed
-// capability scoped to "status update", per the agreed product scope
-// (no title/description/assignee editing in this step).
+// capability scoped to "status update", available to any member
+// regardless of who created the task.
 export async function updateTaskStatus(
   taskId: string,
   status: string,

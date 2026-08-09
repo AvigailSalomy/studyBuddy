@@ -13,14 +13,17 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   done: "Done",
 };
 
-// assigneeId/dueDate are kept as plain strings ("" means "not set"),
-// same convention as groups.targetDegree/targetYear (schemas/groups.ts)
-// -- sidesteps optional-field edge cases with an empty <select>/<input
-// type="date">, and the Server Action converts "" to null. Real
-// validation of assigneeId (must be a current group member) and dueDate
-// (must be a valid, non-past date) happens in the action, not here --
-// neither check can be done with static schema rules alone.
-export const createTaskSchema = z.object({
+// Shared by task creation and task editing -- both collect exactly the
+// same fields (status is deliberately separate, handled only by
+// updateTaskStatus/TaskStatusControl). assigneeId/dueDate are kept as
+// plain strings ("" means "not set"), same convention as
+// groups.targetDegree/targetYear (schemas/groups.ts) -- sidesteps
+// optional-field edge cases with an empty <select>/<input type="date">,
+// and the Server Action converts "" to null. Real validation of
+// assigneeId (must be a current group member) and dueDate (must be a
+// valid, non-past date) happens in the action, not here -- neither
+// check can be done with static schema rules alone.
+export const taskDetailsSchema = z.object({
   title: z
     .string()
     .trim()
@@ -32,4 +35,4 @@ export const createTaskSchema = z.object({
   dueDate: z.string(),
 });
 
-export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+export type TaskDetailsInput = z.infer<typeof taskDetailsSchema>;
