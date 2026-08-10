@@ -18,12 +18,14 @@ export function TasksTab({
   tasks,
   members,
   currentUserId,
+  isOwner,
   openCreate,
 }: {
   groupId: string;
   tasks: TaskRow[];
   members: { id: string; full_name: string }[];
   currentUserId: string;
+  isOwner: boolean;
   openCreate: boolean;
 }) {
   const columns: Record<TaskStatus, TaskRow[]> = {
@@ -76,6 +78,7 @@ export function TasksTab({
                       task={task}
                       members={members}
                       currentUserId={currentUserId}
+                      isOwner={isOwner}
                     />
                   ))
                 )}

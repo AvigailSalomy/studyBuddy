@@ -9,11 +9,13 @@ export function MeetingsTab({
   groupId,
   meetings,
   currentUserId,
+  isOwner,
   openSchedule,
 }: {
   groupId: string;
   meetings: MeetingRow[];
   currentUserId: string;
+  isOwner: boolean;
   openSchedule: boolean;
 }) {
   return (
@@ -39,6 +41,7 @@ export function MeetingsTab({
               key={meeting.id}
               meeting={meeting}
               currentUserId={currentUserId}
+              isOwner={isOwner}
             />
           ))}
         </div>

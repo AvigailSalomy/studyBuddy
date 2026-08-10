@@ -19,14 +19,19 @@ export function TaskListItem({
   task,
   members,
   currentUserId,
+  isOwner,
 }: {
   task: TaskRow;
   members: { id: string; full_name: string }[];
   currentUserId: string;
+  isOwner: boolean;
 }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
+  // Edit stays creator-only, deliberately not extended to the owner --
+  // only Delete gets the owner bypass (see canDelete below).
   const isCreator = task.created_by === currentUserId;
+  const canDelete = isCreator || isOwner;
 
   if (isEditing) {
     return (
@@ -89,7 +94,7 @@ export function TaskListItem({
 
       <div className="flex items-center justify-between gap-2 pt-1">
         <TaskStatusControl taskId={task.id} status={task.status} />
-        {isCreator && <TaskDeleteButton taskId={task.id} />}
+        {canDelete && <TaskDeleteButton taskId={task.id} />}
       </div>
     </div>
   );

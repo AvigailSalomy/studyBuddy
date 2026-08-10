@@ -263,12 +263,15 @@ export async function updateTaskStatus(
   return { success: true };
 }
 
-// Product rule: only the original creator may delete a task -- being
-// the assignee or the group owner does not grant this on its own. The
-// button that calls this is only shown to the creator, but that's a UI
-// convenience, not the authorization boundary: this re-checks ownership
-// itself (backed by the creator-only DELETE RLS policy), so calling it
-// directly as anyone else fails regardless of what the client sends.
+// Product rule: the creator may delete their own task, but only while
+// still a current group member -- or the group owner may delete any
+// task in their group, regardless of who created it or whether that
+// person is still around. Being the assignee does not grant this on
+// its own. The button that calls this only shows for the creator
+// (while a member) or the owner, but that's a UI convenience, not the
+// authorization boundary: this re-checks both paths explicitly, and
+// tasks_delete_creator_or_owner independently enforces the same rule
+// regardless of what the client sends.
 export async function deleteTask(taskId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -296,21 +299,48 @@ export async function deleteTask(taskId: string): Promise<ActionResult> {
     };
   }
 
-  if (task.created_by !== user.id) {
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", task.group_id)
+    .maybeSingle();
+
+  if (groupError || !group) {
     return {
       success: false,
-      error: "Only the person who created this task can delete it.",
+      error: groupError?.message ?? "Group not found.",
     };
   }
 
-  const { error: deleteError } = await supabase
+  const isOwner = group.owner_id === user.id;
+  const isCreatorAndMember =
+    task.created_by === user.id &&
+    (await isGroupMember(supabase, task.group_id, user.id));
+
+  if (!isOwner && !isCreatorAndMember) {
+    return {
+      success: false,
+      error:
+        "Only the creator (while a member) or the group owner can delete this task.",
+    };
+  }
+
+  // No .eq("created_by", user.id) here -- an owner-initiated delete of
+  // someone else's task wouldn't match that. RLS
+  // (tasks_delete_creator_or_owner) is the actual authority;
+  // .select().single() detects whether it actually allowed this delete.
+  const { data: deleted, error: deleteError } = await supabase
     .from("tasks")
     .delete()
     .eq("id", taskId)
-    .eq("created_by", user.id);
+    .select("id")
+    .single();
 
-  if (deleteError) {
-    return { success: false, error: deleteError.message };
+  if (deleteError || !deleted) {
+    return {
+      success: false,
+      error: deleteError?.message ?? "Couldn't delete this task.",
+    };
   }
 
   revalidatePath(`/groups/${task.group_id}`);

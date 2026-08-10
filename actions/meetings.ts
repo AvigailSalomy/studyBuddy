@@ -94,12 +94,15 @@ export async function createMeeting(
   return { success: true };
 }
 
-// Product rule: only the original creator may edit a meeting's details
-// -- being the group owner does not grant this on its own. The button
-// that calls this is only shown to the creator, but that's a UI
-// convenience, not the authorization boundary: this re-checks ownership
-// itself (backed by the creator-only UPDATE RLS policy), so calling it
-// directly as anyone else fails regardless of what the client sends.
+// Product rule: the creator may edit their own meeting, but only while
+// still a current group member -- or the group owner may edit any
+// meeting in their group, regardless of who created it or whether that
+// person is still around. Mirrors the delete rule exactly. The button
+// that calls this only shows for the creator (while a member) or the
+// owner, but that's a UI convenience, not the authorization boundary:
+// this re-checks both paths explicitly, and
+// meetings_update_creator_or_owner independently enforces the same
+// rule regardless of what the client sends.
 export async function updateMeetingDetails(
   meetingId: string,
   input: MeetingDetailsInput,
@@ -135,13 +138,36 @@ export async function updateMeetingDetails(
     };
   }
 
-  if (meeting.created_by !== user.id) {
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", meeting.group_id)
+    .maybeSingle();
+
+  if (groupError || !group) {
     return {
       success: false,
-      error: "Only the person who created this meeting can edit it.",
+      error: groupError?.message ?? "Group not found.",
     };
   }
 
+  const isOwner = group.owner_id === user.id;
+  const isCreatorAndMember =
+    meeting.created_by === user.id &&
+    (await isGroupMember(supabase, meeting.group_id, user.id));
+
+  if (!isOwner && !isCreatorAndMember) {
+    return {
+      success: false,
+      error:
+        "Only the creator (while a member) or the group owner can edit this meeting.",
+    };
+  }
+
+  // No .eq("created_by", user.id) here -- an owner-initiated edit of
+  // someone else's meeting wouldn't match that. RLS
+  // (meetings_update_creator_or_owner) is the actual authority;
+  // .select().single() detects whether it actually allowed this update.
   const { data: updated, error: updateError } = await supabase
     .from("meetings")
     .update({
@@ -150,7 +176,6 @@ export async function updateMeetingDetails(
       location_or_link: parsed.locationOrLink,
     })
     .eq("id", meetingId)
-    .eq("created_by", user.id)
     .select("id")
     .single();
 
@@ -165,12 +190,14 @@ export async function updateMeetingDetails(
   return { success: true };
 }
 
-// Product rule: only the original creator may delete a meeting -- being
-// the group owner does not grant this on its own. The button that
-// calls this is only shown to the creator, but that's a UI convenience,
-// not the authorization boundary: this re-checks ownership itself
-// (backed by the creator-only DELETE RLS policy), so calling it
-// directly as anyone else fails regardless of what the client sends.
+// Product rule: the creator may delete their own meeting, but only
+// while still a current group member -- or the group owner may delete
+// any meeting in their group, regardless of who created it or whether
+// that person is still around. The button that calls this only shows
+// for the creator (while a member) or the owner, but that's a UI
+// convenience, not the authorization boundary: this re-checks both
+// paths explicitly, and meetings_delete_creator_or_owner independently
+// enforces the same rule regardless of what the client sends.
 export async function deleteMeeting(meetingId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -198,21 +225,48 @@ export async function deleteMeeting(meetingId: string): Promise<ActionResult> {
     };
   }
 
-  if (meeting.created_by !== user.id) {
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", meeting.group_id)
+    .maybeSingle();
+
+  if (groupError || !group) {
     return {
       success: false,
-      error: "Only the person who created this meeting can delete it.",
+      error: groupError?.message ?? "Group not found.",
     };
   }
 
-  const { error: deleteError } = await supabase
+  const isOwner = group.owner_id === user.id;
+  const isCreatorAndMember =
+    meeting.created_by === user.id &&
+    (await isGroupMember(supabase, meeting.group_id, user.id));
+
+  if (!isOwner && !isCreatorAndMember) {
+    return {
+      success: false,
+      error:
+        "Only the creator (while a member) or the group owner can delete this meeting.",
+    };
+  }
+
+  // No .eq("created_by", user.id) here -- an owner-initiated delete of
+  // someone else's meeting wouldn't match that. RLS
+  // (meetings_delete_creator_or_owner) is the actual authority;
+  // .select().single() detects whether it actually allowed this delete.
+  const { data: deleted, error: deleteError } = await supabase
     .from("meetings")
     .delete()
     .eq("id", meetingId)
-    .eq("created_by", user.id);
+    .select("id")
+    .single();
 
-  if (deleteError) {
-    return { success: false, error: deleteError.message };
+  if (deleteError || !deleted) {
+    return {
+      success: false,
+      error: deleteError?.message ?? "Couldn't delete this meeting.",
+    };
   }
 
   revalidatePath(`/groups/${meeting.group_id}`);

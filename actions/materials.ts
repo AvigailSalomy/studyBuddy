@@ -272,13 +272,15 @@ export async function getMaterialDownloadUrl(
   return { success: true, url: signed.signedUrl };
 }
 
-// Product rule: only the original uploader may delete a material --
-// being the group owner does not grant this on its own. The button
-// that calls this is only shown to the uploader, but that's a UI
-// convenience, not the authorization boundary: this re-checks
-// ownership itself (both explicitly, and via the uploader-only DELETE
-// RLS policy on both the table and the storage bucket), so calling this
-// directly as anyone else fails regardless of what the client sends.
+// Product rule: the uploader may delete their own material, but only
+// while still a current group member -- or the group owner may delete
+// any material in their group, regardless of who uploaded it or
+// whether that person is still around. The button that calls this only
+// shows for the uploader (while a member) or the owner, but that's a
+// UI convenience, not the authorization boundary: this re-checks both
+// paths explicitly, and materials_delete_uploader_or_owner (table) /
+// materials_bucket_delete_uploader_or_owner (storage) independently
+// enforce the same rule regardless of what the client sends.
 export async function deleteMaterial(materialId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -306,10 +308,29 @@ export async function deleteMaterial(materialId: string): Promise<ActionResult> 
     };
   }
 
-  if (material.uploaded_by !== user.id) {
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", material.group_id)
+    .maybeSingle();
+
+  if (groupError || !group) {
     return {
       success: false,
-      error: "Only the person who uploaded this material can delete it.",
+      error: groupError?.message ?? "Group not found.",
+    };
+  }
+
+  const isOwner = group.owner_id === user.id;
+  const isUploaderAndMember =
+    material.uploaded_by === user.id &&
+    (await isGroupMember(supabase, material.group_id, user.id));
+
+  if (!isOwner && !isUploaderAndMember) {
+    return {
+      success: false,
+      error:
+        "Only the uploader (while a member) or the group owner can delete this material.",
     };
   }
 
@@ -324,14 +345,22 @@ export async function deleteMaterial(materialId: string): Promise<ActionResult> 
     return { success: false, error: removeError.message };
   }
 
-  const { error: deleteError } = await supabase
+  // No .eq("uploaded_by", user.id) here -- an owner-initiated delete of
+  // someone else's material wouldn't match that. RLS
+  // (materials_delete_uploader_or_owner) is the actual authority;
+  // .select().single() detects whether it actually allowed this delete.
+  const { data: deleted, error: deleteError } = await supabase
     .from("materials")
     .delete()
     .eq("id", materialId)
-    .eq("uploaded_by", user.id);
+    .select("id")
+    .single();
 
-  if (deleteError) {
-    return { success: false, error: deleteError.message };
+  if (deleteError || !deleted) {
+    return {
+      success: false,
+      error: deleteError?.message ?? "Couldn't delete this material.",
+    };
   }
 
   revalidatePath(`/groups/${material.group_id}`);

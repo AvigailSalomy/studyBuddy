@@ -174,6 +174,7 @@ export function GroupTabs({
           groupId={groupId}
           materials={materials ?? []}
           currentUserId={currentUserId}
+          isOwner={isOwner}
           openUpload={panel === "upload"}
         />
       )}
@@ -183,6 +184,7 @@ export function GroupTabs({
           tasks={tasks ?? []}
           members={(members ?? []).map((m) => m.profile)}
           currentUserId={currentUserId}
+          isOwner={isOwner}
           openCreate={panel === "create"}
         />
       )}
@@ -191,6 +193,7 @@ export function GroupTabs({
           groupId={groupId}
           meetings={meetings ?? []}
           currentUserId={currentUserId}
+          isOwner={isOwner}
           openSchedule={panel === "schedule"}
         />
       )}

@@ -9,18 +9,20 @@ import { MATERIAL_CATEGORY_LABELS } from "@/schemas/materials";
 import { formatFileSize } from "@/lib/format";
 import type { MaterialRow } from "@/types/material";
 
-// Delete is only ever rendered for the uploader in the UI here, same as
-// before -- deleteMaterial itself still re-checks ownership server-side
+// Delete shows for the uploader or the group owner -- deleteMaterial
+// itself still independently re-checks both paths server-side
 // regardless (see MaterialDeleteButton).
 export function MaterialsTab({
   groupId,
   materials,
   currentUserId,
+  isOwner,
   openUpload,
 }: {
   groupId: string;
   materials: MaterialRow[];
   currentUserId: string;
+  isOwner: boolean;
   openUpload: boolean;
 }) {
   return (
@@ -80,7 +82,7 @@ export function MaterialsTab({
 
               <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                 <MaterialDownloadButton materialId={material.id} />
-                {material.uploader.id === currentUserId && (
+                {(material.uploader.id === currentUserId || isOwner) && (
                   <MaterialDeleteButton materialId={material.id} />
                 )}
               </div>
