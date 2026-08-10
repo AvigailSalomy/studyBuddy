@@ -26,7 +26,8 @@ export async function completeProfile(
     return { success: false, error: "You must be logged in." };
   }
 
-  const { fullName, institution, faculty, degree, studyYear } = parsed.data;
+  const { fullName, institution, faculty, degree, studyYear, contactEmail } =
+    parsed.data;
 
   const { error: profileError } = await supabase.from("profiles").insert({
     id: user.id,
@@ -36,6 +37,9 @@ export async function completeProfile(
     faculty,
     degree,
     study_year: studyYear,
+    // Distinct from `email` above (the auth/login email) -- this is the
+    // user's own explicit choice, optional, empty by default.
+    contact_email: contactEmail.length > 0 ? contactEmail : null,
   });
 
   if (profileError) {
@@ -66,7 +70,8 @@ export async function updateProfile(
     return { success: false, error: "You must be logged in." };
   }
 
-  const { fullName, institution, faculty, degree, studyYear } = parsed.data;
+  const { fullName, institution, faculty, degree, studyYear, contactEmail } =
+    parsed.data;
 
   // .eq("id", user.id) is redundant with the profiles_update_self RLS
   // policy (which already restricts updates to auth.uid()), but kept
@@ -79,6 +84,10 @@ export async function updateProfile(
       faculty,
       degree,
       study_year: studyYear,
+      // "" means the user cleared it -- stored as null, same convention
+      // as other optional free-text fields (materials.title, meetings.
+      // location_or_link) elsewhere in this app.
+      contact_email: contactEmail.length > 0 ? contactEmail : null,
     })
     .eq("id", user.id);
 

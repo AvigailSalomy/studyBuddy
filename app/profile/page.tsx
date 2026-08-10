@@ -23,7 +23,9 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, institution, faculty, degree, study_year")
+    .select(
+      "full_name, institution, faculty, degree, study_year, contact_email",
+    )
     .eq("id", user.id)
     .maybeSingle();
 
@@ -37,6 +39,7 @@ export default async function ProfilePage() {
     faculty: profile.faculty,
     degree: profile.degree,
     studyYear: profile.study_year,
+    contactEmail: profile.contact_email ?? "",
   };
 
   return (

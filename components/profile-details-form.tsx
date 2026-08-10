@@ -115,6 +115,26 @@ export function ProfileDetailsForm({
         )}
       </div>
 
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="contactEmail">Contact email (optional)</Label>
+        <Input
+          id="contactEmail"
+          type="email"
+          placeholder="you@example.com"
+          {...register("contactEmail")}
+        />
+        <p className="text-xs text-muted-foreground">
+          Shown to fellow group members so they can reach you. This is
+          separate from your login email and is only shared if you add one
+          here.
+        </p>
+        {errors.contactEmail && (
+          <p className="text-sm text-destructive">
+            {errors.contactEmail.message}
+          </p>
+        )}
+      </div>
+
       {serverError && (
         <p role="alert" className="text-sm text-destructive">
           {serverError}

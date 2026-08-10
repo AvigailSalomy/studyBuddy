@@ -30,6 +30,12 @@ export const profileBasicsSchema = z.object({
     .min(1, "Degree/track is required")
     .transform(normalizeWhitespace),
   studyYear: z.coerce.number().int().min(1).max(8),
+  // Optional and distinct from the account's login email (profiles.email,
+  // set once from the auth user at onboarding and never user-editable) --
+  // this is a separate, user-chosen value, shown to fellow group members.
+  // Accepts "" (not provided/cleared) or a real address, nothing else;
+  // the Server Action converts "" to null before writing.
+  contactEmail: z.union([z.literal(""), z.email("Enter a valid email address")]),
 });
 
 // z.coerce.number() accepts unknown input (e.g. the string a number <input>

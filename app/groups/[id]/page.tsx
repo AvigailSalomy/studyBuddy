@@ -149,7 +149,7 @@ export default async function GroupDetailPage({
       ? await Promise.all([
           supabase
             .from("group_members")
-            .select("role, profile:profiles(id, full_name)")
+            .select("role, profile:profiles(id, full_name, contact_email)")
             .eq("group_id", id)
             .order("joined_at", { ascending: true })
             .returns<GroupMemberRow[]>(),

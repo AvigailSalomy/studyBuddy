@@ -3,6 +3,7 @@ export type GroupMemberRow = {
   profile: {
     id: string;
     full_name: string;
+    contact_email: string | null;
   };
 };
 
