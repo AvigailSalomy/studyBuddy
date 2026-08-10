@@ -65,6 +65,7 @@ export function TaskCreateForm({
           id="task-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          autoComplete="off"
         />
       </div>
 
@@ -74,6 +75,7 @@ export function TaskCreateForm({
           id="task-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          autoComplete="off"
         />
       </div>
 
@@ -120,6 +122,7 @@ export function TaskCreateForm({
           type="date"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
+          autoComplete="off"
         />
       </div>
 

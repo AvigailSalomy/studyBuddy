@@ -54,6 +54,7 @@ export function MeetingCreateForm({ groupId }: { groupId: string }) {
           id="meeting-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          autoComplete="off"
         />
       </div>
 
@@ -64,6 +65,7 @@ export function MeetingCreateForm({ groupId }: { groupId: string }) {
           type="datetime-local"
           value={meetingTimeLocal}
           onChange={(e) => setMeetingTimeLocal(e.target.value)}
+          autoComplete="off"
         />
       </div>
 
@@ -76,6 +78,7 @@ export function MeetingCreateForm({ groupId }: { groupId: string }) {
           value={locationOrLink}
           onChange={(e) => setLocationOrLink(e.target.value)}
           placeholder="University Library, Room 204 or https://..."
+          autoComplete="off"
         />
       </div>
 

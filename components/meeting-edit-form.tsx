@@ -62,6 +62,7 @@ export function MeetingEditForm({
           id={`meeting-edit-title-${meeting.id}`}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          autoComplete="off"
         />
       </div>
 
@@ -74,6 +75,7 @@ export function MeetingEditForm({
           type="datetime-local"
           value={meetingTimeLocal}
           onChange={(e) => setMeetingTimeLocal(e.target.value)}
+          autoComplete="off"
         />
       </div>
 
@@ -86,6 +88,7 @@ export function MeetingEditForm({
           value={locationOrLink}
           onChange={(e) => setLocationOrLink(e.target.value)}
           placeholder="University Library, Room 204 or https://..."
+          autoComplete="off"
         />
       </div>
 

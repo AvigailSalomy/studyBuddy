@@ -146,6 +146,7 @@ export function MaterialUploadForm({ groupId }: { groupId: string }) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Machine Learning Exam Summary"
+          autoComplete="off"
         />
       </div>
 

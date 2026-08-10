@@ -65,7 +65,7 @@ export function ProfileDetailsForm({
     >
       <div className="flex flex-col gap-2">
         <Label htmlFor="fullName">Full name</Label>
-        <Input id="fullName" {...register("fullName")} />
+        <Input id="fullName" autoComplete="off" {...register("fullName")} />
         {errors.fullName && (
           <p className="text-sm text-destructive">
             {errors.fullName.message}
@@ -75,7 +75,7 @@ export function ProfileDetailsForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="institution">Institution</Label>
-        <Input id="institution" {...register("institution")} />
+        <Input id="institution" autoComplete="off" {...register("institution")} />
         {errors.institution && (
           <p className="text-sm text-destructive">
             {errors.institution.message}
@@ -85,7 +85,7 @@ export function ProfileDetailsForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="faculty">Faculty</Label>
-        <Input id="faculty" {...register("faculty")} />
+        <Input id="faculty" autoComplete="off" {...register("faculty")} />
         {errors.faculty && (
           <p className="text-sm text-destructive">{errors.faculty.message}</p>
         )}
@@ -93,7 +93,7 @@ export function ProfileDetailsForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="degree">Degree / track</Label>
-        <Input id="degree" {...register("degree")} />
+        <Input id="degree" autoComplete="off" {...register("degree")} />
         {errors.degree && (
           <p className="text-sm text-destructive">{errors.degree.message}</p>
         )}
@@ -106,6 +106,7 @@ export function ProfileDetailsForm({
           type="number"
           min={1}
           max={8}
+          autoComplete="off"
           {...register("studyYear")}
         />
         {errors.studyYear && (
@@ -121,6 +122,7 @@ export function ProfileDetailsForm({
           id="contactEmail"
           type="email"
           placeholder="you@example.com"
+          autoComplete="off"
           {...register("contactEmail")}
         />
         <p className="text-xs text-muted-foreground">

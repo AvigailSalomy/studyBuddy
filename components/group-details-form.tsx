@@ -84,7 +84,7 @@ export function GroupDetailsForm({
     >
       <div className="flex flex-col gap-2">
         <Label htmlFor="name">Group name</Label>
-        <Input id="name" {...register("name")} />
+        <Input id="name" autoComplete="off" {...register("name")} />
         {errors.name && (
           <p className="text-sm text-destructive">{errors.name.message}</p>
         )}
@@ -92,7 +92,7 @@ export function GroupDetailsForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="description">Description</Label>
-        <Input id="description" {...register("description")} />
+        <Input id="description" autoComplete="off" {...register("description")} />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -138,7 +138,7 @@ export function GroupDetailsForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="targetDegree">Target degree (optional)</Label>
-        <Input id="targetDegree" {...register("targetDegree")} />
+        <Input id="targetDegree" autoComplete="off" {...register("targetDegree")} />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -148,6 +148,7 @@ export function GroupDetailsForm({
           type="number"
           min={1}
           max={8}
+          autoComplete="off"
           {...register("targetYear")}
         />
       </div>
@@ -158,6 +159,7 @@ export function GroupDetailsForm({
           id="maxMembers"
           type="number"
           min={2}
+          autoComplete="off"
           {...register("maxMembers")}
         />
         {errors.maxMembers && (
@@ -169,7 +171,7 @@ export function GroupDetailsForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="locationOrLink">Location or meeting link (optional)</Label>
-        <Input id="locationOrLink" {...register("locationOrLink")} />
+        <Input id="locationOrLink" autoComplete="off" {...register("locationOrLink")} />
       </div>
 
       {serverError && (
