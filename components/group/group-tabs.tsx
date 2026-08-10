@@ -18,6 +18,7 @@ import type { MaterialRow } from "@/types/material";
 import type { TaskRow } from "@/types/task";
 import type { MeetingRow } from "@/types/meeting";
 import type { PendingJoinRequest } from "@/types/join-request";
+import type { ChatMessageRow } from "@/types/chat";
 import { OverviewTab } from "@/components/group/tabs/overview-tab";
 import { ChatTab } from "@/components/group/tabs/chat-tab";
 import { MaterialsTab } from "@/components/group/tabs/materials-tab";
@@ -61,6 +62,7 @@ export function GroupTabs({
   materials,
   tasks,
   meetings,
+  chatMessages,
   pendingRequests,
   initialTab,
   initialPanel,
@@ -77,6 +79,7 @@ export function GroupTabs({
   materials: MaterialRow[] | null;
   tasks: TaskRow[] | null;
   meetings: MeetingRow[] | null;
+  chatMessages: ChatMessageRow[] | null;
   pendingRequests: PendingJoinRequest[];
   initialTab?: string;
   initialPanel?: string;
@@ -158,7 +161,14 @@ export function GroupTabs({
           onNavigate={navigate}
         />
       )}
-      {tab === "chat" && isMember && <ChatTab />}
+      {tab === "chat" && isMember && (
+        <ChatTab
+          groupId={groupId}
+          currentUserId={currentUserId}
+          members={members ?? []}
+          messages={chatMessages ?? []}
+        />
+      )}
       {tab === "materials" && isMember && (
         <MaterialsTab
           groupId={groupId}

@@ -20,6 +20,7 @@ import type {
   OwnerPendingRequest,
   DashboardGroupPreviewRow,
 } from "@/types/dashboard";
+import type { UnreadGroupSummary } from "@/types/chat";
 
 type DashboardSearchParams = {
   course?: string;
@@ -293,7 +294,13 @@ async function DashboardHomeView({
   // count is requested alongside each limited page of rows (Supabase's
   // combined count+data fetch) so the summary cards above don't need
   // their own extra queries either.
-  const [meetingsResult, tasksResult, requestsResult, groupsPreviewResult] =
+  const [
+    meetingsResult,
+    tasksResult,
+    requestsResult,
+    groupsPreviewResult,
+    unreadSummaryResult,
+  ] =
     await Promise.all([
       supabase
         .from("meetings")
@@ -350,6 +357,15 @@ async function DashboardHomeView({
         .order("joined_at", { ascending: false })
         .limit(4)
         .returns<DashboardGroupPreviewRow[]>(),
+      // Same "cast rather than .returns<T[]>()" reasoning as
+      // group_member_counts below: without generated Database types,
+      // supabase-js can't confirm this RPC returns a set. One row per
+      // group with unread messages, already newest-activity-first and
+      // already carrying the latest message's content/sender -- see
+      // the migration for the windowed query behind it.
+      supabase.rpc("unread_chat_summary") as unknown as Promise<{
+        data: UnreadGroupSummary[] | null;
+      }>,
     ]);
 
   // Member counts for just the previewed groups (≤4 ids) -- one bulk
@@ -368,6 +384,7 @@ async function DashboardHomeView({
   return (
     <AppShell active="dashboard" userName={userName}>
       <DashboardHome
+        userId={userId}
         userName={userName}
         groupsCount={groupsPreviewResult.count ?? 0}
         tasksCount={tasksResult.count ?? 0}
@@ -378,6 +395,7 @@ async function DashboardHomeView({
         pendingRequests={requestsResult.data ?? []}
         groupsPreview={groupsPreviewResult.data ?? []}
         groupsPreviewMemberCounts={previewMemberCounts ?? []}
+        unreadSummaries={unreadSummaryResult.data ?? []}
       />
     </AppShell>
   );

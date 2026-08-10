@@ -14,6 +14,7 @@ import type { PendingJoinRequest } from "@/types/join-request";
 import type { MaterialRow } from "@/types/material";
 import type { TaskRow } from "@/types/task";
 import type { MeetingRow } from "@/types/meeting";
+import type { ChatMessageRow } from "@/types/chat";
 
 export default async function GroupDetailPage({
   params,
@@ -131,12 +132,19 @@ export default async function GroupDetailPage({
   const memberCount =
     (memberCounts as GroupMemberCountRow[] | null)?.[0]?.member_count ?? 0;
 
-  // The full roster, materials, tasks, and meetings are all
-  // RLS-restricted to fellow members (group_members_select_fellow_members
-  // / materials_select_members / tasks_select_members /
-  // meetings_select_members, unchanged) -- only fetched (and only
-  // rendered) when the viewer is themself a member.
-  const [{ data: members }, { data: materials }, { data: tasks }, { data: meetings }] =
+  // The full roster, materials, tasks, meetings, and chat history are
+  // all RLS-restricted to fellow members (group_members_select_fellow_
+  // members / materials_select_members / tasks_select_members /
+  // meetings_select_members / chat_messages_select_members, unchanged)
+  // -- only fetched (and only rendered) when the viewer is themself a
+  // member.
+  const [
+    { data: members },
+    { data: materials },
+    { data: tasks },
+    { data: meetings },
+    { data: recentChatMessages },
+  ] =
     isMember
       ? await Promise.all([
           supabase
@@ -180,8 +188,31 @@ export default async function GroupDetailPage({
             .gt("meeting_time", new Date().toISOString())
             .order("meeting_time", { ascending: true })
             .returns<MeetingRow[]>(),
+          // Latest 50, newest first -- the only way to get the *latest*
+          // N via a single query -- reversed below into chronological
+          // order for display. chat_messages_group_id_created_at_idx
+          // (group_id, created_at) serves this directly.
+          supabase
+            .from("chat_messages")
+            .select(
+              "id, content, created_at, sender_id, sender:profiles!sender_id(id, full_name)",
+            )
+            .eq("group_id", id)
+            .order("created_at", { ascending: false })
+            .limit(50)
+            .returns<ChatMessageRow[]>(),
         ])
-      : [{ data: null }, { data: null }, { data: null }, { data: null }];
+      : [
+          { data: null },
+          { data: null },
+          { data: null },
+          { data: null },
+          { data: null },
+        ];
+
+  const chatMessages = recentChatMessages
+    ? [...recentChatMessages].reverse()
+    : null;
 
   return (
     <AppShell active="group" userName={profile.full_name}>
@@ -204,6 +235,7 @@ export default async function GroupDetailPage({
         materials={materials}
         tasks={tasks}
         meetings={meetings}
+        chatMessages={chatMessages}
         pendingRequests={pendingRequests}
         initialTab={initialTab}
         initialPanel={initialPanel}

@@ -6,6 +6,8 @@ import { UpcomingMeetingsCard } from "@/components/dashboard/upcoming-meetings-c
 import { MyTasksCard } from "@/components/dashboard/my-tasks-card";
 import { PendingRequestsCard } from "@/components/dashboard/pending-requests-card";
 import { MyGroupsPreviewCard } from "@/components/dashboard/my-groups-preview-card";
+import { NewMessagesCard } from "@/components/dashboard/new-messages-card";
+import { UnreadWatcher } from "@/components/dashboard/unread-watcher";
 import type {
   DashboardMeetingRow,
   DashboardTaskRow,
@@ -13,12 +15,14 @@ import type {
   DashboardGroupPreviewRow,
 } from "@/types/dashboard";
 import type { GroupMemberCountRow } from "@/types/group";
+import type { UnreadGroupSummary } from "@/types/chat";
 
 // Bare /dashboard: "what needs my attention right now" -- distinct from
 // My Groups (?scope=mine, the full list) and Explore Groups
 // (?scope=explore, groups not yet joined). No search/filter toolbar
 // here on purpose; that's what My Groups/Explore Groups are for.
 export function DashboardHome({
+  userId,
   userName,
   groupsCount,
   tasksCount,
@@ -29,7 +33,9 @@ export function DashboardHome({
   pendingRequests,
   groupsPreview,
   groupsPreviewMemberCounts,
+  unreadSummaries,
 }: {
+  userId: string;
   userName: string;
   groupsCount: number;
   tasksCount: number;
@@ -40,9 +46,12 @@ export function DashboardHome({
   pendingRequests: OwnerPendingRequest[];
   groupsPreview: DashboardGroupPreviewRow[];
   groupsPreviewMemberCounts: GroupMemberCountRow[];
+  unreadSummaries: UnreadGroupSummary[];
 }) {
   return (
     <div className="flex flex-col gap-6">
+      <UnreadWatcher currentUserId={userId} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -66,6 +75,9 @@ export function DashboardHome({
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {unreadSummaries.length > 0 && (
+          <NewMessagesCard summaries={unreadSummaries} />
+        )}
         <UpcomingMeetingsCard meetings={meetings} />
         <MyTasksCard tasks={tasks} />
         {pendingRequestsCount > 0 && (
