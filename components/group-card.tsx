@@ -22,10 +22,16 @@ export function GroupCard({
   group,
   memberCount,
   status,
+  reasons,
 }: {
   group: GroupCardData;
   memberCount: number;
   status: GroupCardStatus | null;
+  // Recommendation-reason chips (e.g. "Your faculty") -- optional and
+  // only ever populated by the Recommendations page. Every other
+  // caller (Dashboard, My Groups, Explore Groups) omits this and the
+  // card renders exactly as before.
+  reasons?: string[];
 }) {
   const isOnlineLink = group.location_or_link
     ? isHttpUrl(group.location_or_link)
@@ -61,6 +67,19 @@ export function GroupCard({
             {group.target_year ? ` · Y${group.target_year}` : ""}
           </Chip>
         </div>
+
+        {reasons && reasons.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {reasons.map((reason) => (
+              <span
+                key={reason}
+                className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+              >
+                {reason}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="mt-auto flex flex-col gap-1.5 pt-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground">

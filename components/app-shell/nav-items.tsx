@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 export type ActiveNav =
   | "dashboard"
   | "my-groups"
+  | "recommendations"
   | "explore"
   | "profile"
   | "group"
@@ -33,15 +34,13 @@ type DisabledNavItem = {
 
 // "My Groups" and "Explore Groups" are real, working views over the
 // dashboard's own already-fetched group list (see app/dashboard/page.tsx's
-// `scope` param) -- not placeholders. Recommendations has no implemented
-// feature behind it yet, so it's rendered disabled rather than linking
-// anywhere (per explicit product direction: never link to a page that
-// doesn't exist) -- to be built out as its own feature next. Settings
-// was removed entirely (no feature planned yet, not even disabled).
+// `scope` param) -- not placeholders. Recommendations now links to its
+// own real page too (app/recommendations/page.tsx). Settings was
+// removed entirely (no feature planned yet, not even disabled).
 export const NAV_ITEMS: (LinkNavItem | DisabledNavItem)[] = [
   { kind: "link", key: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { kind: "link", key: "my-groups", label: "My Groups", href: "/dashboard?scope=mine", icon: Users },
-  { kind: "disabled", label: "Recommendations", icon: Sparkles },
+  { kind: "link", key: "recommendations", label: "Recommendations", href: "/recommendations", icon: Sparkles },
   { kind: "link", key: "explore", label: "Explore Groups", href: "/dashboard?scope=explore", icon: Compass },
   { kind: "link", key: "profile", label: "Profile", href: "/profile", icon: UserCircle },
 ];
