@@ -14,13 +14,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { JoinRequestButton } from "@/components/join-request-button";
+import { LeaveGroupButton } from "@/components/leave-group-button";
 import { GROUP_TYPE_LABELS, type GroupDetailData } from "@/types/group";
 import { isHttpUrl } from "@/lib/format";
 
 // Owner/member-count/created-date live in the Overview tab's Group Info
 // card instead of here -- this header stays focused on identity
-// (title/description/chips) and the two actions that always matter
-// regardless of which tab is open (Edit group, Request to join).
+// (title/description/chips) and the actions that always matter
+// regardless of which tab is open (Edit group / Request to join /
+// Leave group -- exactly one of these three ever applies to a given
+// viewer: owner, non-member, or non-owner member, respectively).
 export function GroupHeader({
   group,
   isOwner,
@@ -82,6 +85,9 @@ export function GroupHeader({
               ) : (
                 <JoinRequestButton groupId={group.id} />
               ))}
+            {isMember && !isOwner && (
+              <LeaveGroupButton groupId={group.id} />
+            )}
           </div>
         </div>
 

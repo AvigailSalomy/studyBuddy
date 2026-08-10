@@ -8,6 +8,8 @@ type ActionResult =
   | { success: true; groupId: string }
   | { success: false; error: string };
 
+type LeaveResult = { success: true } | { success: false; error: string };
+
 // Both createGroup and updateGroup parse a GroupInput this same way, so
 // the shape/target-year handling is factored out rather than duplicated.
 function parseGroupInput(input: GroupInput) {
@@ -170,4 +172,67 @@ export async function updateGroup(
   revalidatePath("/dashboard");
   revalidatePath(`/groups/${groupId}`);
   return { success: true, groupId };
+}
+
+// Regular members only -- the owner must never be able to leave (it
+// would make the group ownerless; ownership transfer isn't built).
+// This check is a clear, early error for the normal path -- the actual,
+// unbypassable enforcement is the database-level guard added to
+// group_members_delete_self_or_owner (the leave_group migration): that
+// policy rejects deleting the owner's own row no matter how the
+// request is made, not just through this action.
+export async function leaveGroup(groupId: string): Promise<LeaveResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "You must be logged in." };
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", groupId)
+    .maybeSingle();
+
+  if (groupError) {
+    return { success: false, error: groupError.message };
+  }
+
+  if (!group) {
+    return { success: false, error: "Group not found." };
+  }
+
+  if (group.owner_id === user.id) {
+    return {
+      success: false,
+      error:
+        "As the owner, you can't leave this group. Ownership transfer isn't available yet.",
+    };
+  }
+
+  // group_id + profile_id = auth.uid() together are exactly what RLS
+  // requires too -- redundant with it, kept explicit as defense in
+  // depth and so this table is never asked to delete a row it wasn't
+  // told the caller actually owns.
+  const { data: left, error: deleteError } = await supabase
+    .from("group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("profile_id", user.id)
+    .select("group_id")
+    .single();
+
+  if (deleteError || !left) {
+    return {
+      success: false,
+      error: deleteError?.message ?? "You're not a member of this group.",
+    };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/groups/${groupId}`);
+  return { success: true };
 }
