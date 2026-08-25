@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell/app-shell";
 import { ProfileEditForm } from "@/components/profile-edit-form";
+import { ChangePasswordForm } from "@/components/change-password-form";
 import {
   Card,
   CardContent,
@@ -18,6 +19,10 @@ export default async function ProfilePage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    redirect("/login");
+  }
+
+  if (!user.email) {
     redirect("/login");
   }
 
@@ -59,6 +64,15 @@ export default async function ProfilePage() {
         </CardHeader>
         <CardContent>
           <ProfileEditForm defaultValues={profileDefaultValues} />
+        </CardContent>
+      </Card>
+      <Card className="w-full max-w-xl rounded-2xl shadow-sm">
+        <CardHeader>
+          <CardTitle>Security</CardTitle>
+          <CardDescription>Change your account password.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm email={user.email} />
         </CardContent>
       </Card>
     </AppShell>
