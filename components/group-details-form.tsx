@@ -91,7 +91,7 @@ export function GroupDetailsForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">Description (optional)</Label>
         <Input id="description" autoComplete="off" {...register("description")} />
       </div>
 
