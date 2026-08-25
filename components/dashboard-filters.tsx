@@ -53,6 +53,12 @@ export function DashboardFilters({
       );
       if (currentScope) params.set("scope", currentScope);
       router.push(`${pathname}?${params.toString()}`);
+      // router.push alone doesn't reliably re-fetch here: Next.js treats
+      // a search-param-only navigation as a special case (see
+      // router.bfcacheId in the Next.js docs) that can leave the
+      // previous render on screen. refresh() forces a fresh server
+      // re-render for the new query string.
+      router.refresh();
     }, 300);
 
     return () => clearTimeout(timeout);
