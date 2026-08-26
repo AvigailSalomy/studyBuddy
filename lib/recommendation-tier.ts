@@ -5,9 +5,9 @@
 // point total.
 //
 // Only faculty and degree are used. target_year is deliberately not a
-// signal (product decision). profile_courses is never read -- it's
-// unpopulated everywhere in this app (verified before this feature was
-// built), so there is no reliable course-relevance data to use yet.
+// signal (product decision). Courses aren't a signal either -- courses
+// are associated at the group level (groups.course_id) only, not per
+// profile, so there's no per-user course data to compare against.
 // Institution is not compared here at all: it's enforced as a hard
 // filter at the query level (only same-institution groups are ever
 // fetched as candidates), not a tie-breaking signal.
