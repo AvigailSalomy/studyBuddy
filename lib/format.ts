@@ -1,6 +1,5 @@
-// Shared by the group's own location_or_link display and meetings'
-// (same field concept, same table pattern) -- http/https values render
-// as a clickable link, anything else as plain location text.
+// Shared by meetings' location_or_link display -- http/https values
+// render as a clickable link, anything else as plain location text.
 export function isHttpUrl(value: string): boolean {
   return /^https?:\/\//i.test(value);
 }

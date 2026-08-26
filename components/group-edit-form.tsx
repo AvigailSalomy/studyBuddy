@@ -19,7 +19,6 @@ export function GroupEditForm({ group }: { group: GroupDetailData }) {
         targetDegree: group.target_degree ?? "",
         targetYear: group.target_year ? String(group.target_year) : "",
         maxMembers: group.max_members,
-        locationOrLink: group.location_or_link ?? "",
       }}
       defaultCourse={group.course}
       action={(values: GroupInput) => updateGroup(group.id, values)}

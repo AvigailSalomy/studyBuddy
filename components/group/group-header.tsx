@@ -6,8 +6,6 @@ import {
   Target,
   Building2,
   Pencil,
-  MapPin,
-  Link as LinkIcon,
   GraduationCap,
   type LucideIcon,
 } from "lucide-react";
@@ -16,7 +14,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { JoinRequestButton } from "@/components/join-request-button";
 import { LeaveGroupButton } from "@/components/leave-group-button";
 import { GROUP_TYPE_LABELS, type GroupDetailData } from "@/types/group";
-import { isHttpUrl } from "@/lib/format";
 
 // Owner/member-count/created-date live in the Overview tab's Group Info
 // card instead of here -- this header stays focused on identity
@@ -35,10 +32,6 @@ export function GroupHeader({
   isMember: boolean;
   hasPendingRequest: boolean;
 }) {
-  const isOnlineLink = group.location_or_link
-    ? isHttpUrl(group.location_or_link)
-    : false;
-
   return (
     <div className="flex flex-col gap-3">
       <Link
@@ -99,22 +92,6 @@ export function GroupHeader({
             {group.target_year ? `Year ${group.target_year}` : "Any year"}
           </Chip>
           <Chip icon={Building2}>{group.course.institution}</Chip>
-          {group.location_or_link && (
-            <Chip icon={isOnlineLink ? LinkIcon : MapPin}>
-              {isOnlineLink ? (
-                <a
-                  href={group.location_or_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2"
-                >
-                  Online link
-                </a>
-              ) : (
-                group.location_or_link
-              )}
-            </Chip>
-          )}
         </div>
       </div>
     </div>

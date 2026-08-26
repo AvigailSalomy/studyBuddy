@@ -2,11 +2,11 @@ import { z } from "zod";
 import { normalizeWhitespace } from "@/lib/text";
 
 // Shared by group creation and group editing -- both collect exactly the
-// same fields. targetDegree/targetYear/description/locationOrLink are
-// kept as plain strings here (not z.coerce/optional) -- empty string
-// means "no preference"/"not set", and the Server Action converts that
-// to null before writing to the nullable DB columns. This sidesteps the
-// edge cases of combining z.coerce.number().optional() with an empty
+// same fields. targetDegree/targetYear/description are kept as plain
+// strings here (not z.coerce/optional) -- empty string means "no
+// preference"/"not set", and the Server Action converts that to null
+// before writing to the nullable DB columns. This sidesteps the edge
+// cases of combining z.coerce.number().optional() with an empty
 // <input> (Number("") is 0, not undefined, which would otherwise fail
 // validation instead of being treated as "cleared").
 //
@@ -25,7 +25,6 @@ export const groupSchema = z.object({
     .int()
     .min(2, "Must allow at least 2 members")
     .max(500),
-  locationOrLink: z.string().trim().max(500),
 });
 
 export type GroupFormInput = z.input<typeof groupSchema>;

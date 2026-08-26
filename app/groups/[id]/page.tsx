@@ -53,7 +53,7 @@ export default async function GroupDetailPage({
   const { data: rows, error } = await supabase
     .from("groups")
     .select(
-      "id, name, description, group_type, target_degree, target_year, location_or_link, max_members, owner_id, created_at, course:courses!inner(id, course_code, course_name, faculty, institution)",
+      "id, name, description, group_type, target_degree, target_year, max_members, owner_id, created_at, course:courses!inner(id, course_code, course_name, faculty, institution)",
     )
     .eq("id", id)
     .returns<GroupDetailData[]>();

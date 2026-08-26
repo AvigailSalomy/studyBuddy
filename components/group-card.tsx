@@ -7,7 +7,6 @@ import {
   type GroupCardStatus,
 } from "@/types/group";
 import { Badge } from "@/components/ui/badge";
-import { isHttpUrl } from "@/lib/format";
 
 const STATUS_BADGE_VARIANT: Record<
   GroupCardStatus,
@@ -33,9 +32,6 @@ export function GroupCard({
   // card renders exactly as before.
   reasons?: string[];
 }) {
-  const isOnlineLink = group.location_or_link
-    ? isHttpUrl(group.location_or_link)
-    : false;
   const capacityPct = Math.min(
     100,
     Math.round((memberCount / group.max_members) * 100),
@@ -94,11 +90,6 @@ export function GroupCard({
               style={{ width: `${capacityPct}%` }}
             />
           </div>
-          {group.location_or_link && (
-            <p className="truncate text-xs text-muted-foreground">
-              {isOnlineLink ? "Online" : group.location_or_link}
-            </p>
-          )}
           {!status && (
             <span className="mt-1 text-sm font-medium text-primary">
               View group →

@@ -13,7 +13,6 @@ export type GroupCardData = {
   group_type: "study" | "project";
   target_degree: string | null;
   target_year: number | null;
-  location_or_link: string | null;
   max_members: number;
   owner_id: string;
   course: {
@@ -46,7 +45,6 @@ export type GroupDetailData = {
   group_type: "study" | "project";
   target_degree: string | null;
   target_year: number | null;
-  location_or_link: string | null;
   max_members: number;
   owner_id: string;
   created_at: string;

@@ -90,7 +90,7 @@ export default async function DashboardPage({
   let query = supabase
     .from("groups")
     .select(
-      "id, name, description, group_type, target_degree, target_year, location_or_link, max_members, owner_id, course:courses!inner(id, course_name, faculty)",
+      "id, name, description, group_type, target_degree, target_year, max_members, owner_id, course:courses!inner(id, course_name, faculty)",
     )
     .order("created_at", { ascending: false });
 
@@ -350,7 +350,7 @@ async function DashboardHomeView({
       supabase
         .from("group_members")
         .select(
-          "role, group:groups(id, name, description, group_type, target_degree, target_year, location_or_link, max_members, owner_id, course:courses(id, course_name, faculty))",
+          "role, group:groups(id, name, description, group_type, target_degree, target_year, max_members, owner_id, course:courses(id, course_name, faculty))",
           { count: "exact" },
         )
         .eq("profile_id", userId)

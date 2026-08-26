@@ -23,7 +23,6 @@ export function GroupCreateForm({
         targetDegree: defaultDegree,
         targetYear: String(defaultYear),
         maxMembers: 10,
-        locationOrLink: "",
       }}
       defaultCourse={null}
       action={createGroup}

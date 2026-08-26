@@ -169,11 +169,6 @@ export function GroupDetailsForm({
         )}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="locationOrLink">Location or meeting link (optional)</Label>
-        <Input id="locationOrLink" autoComplete="off" {...register("locationOrLink")} />
-      </div>
-
       {serverError && (
         <p role="alert" className="text-sm text-destructive">
           {serverError}

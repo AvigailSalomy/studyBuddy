@@ -70,8 +70,6 @@ export async function createGroup(input: GroupInput): Promise<ActionResult> {
         parsed.targetDegree.length > 0 ? parsed.targetDegree : null,
       target_year: parsed.targetYearNumber,
       max_members: parsed.maxMembers,
-      location_or_link:
-        parsed.locationOrLink.length > 0 ? parsed.locationOrLink : null,
       owner_id: user.id,
     })
     .select("id")
@@ -152,8 +150,6 @@ export async function updateGroup(
         parsed.targetDegree.length > 0 ? parsed.targetDegree : null,
       target_year: parsed.targetYearNumber,
       max_members: parsed.maxMembers,
-      location_or_link:
-        parsed.locationOrLink.length > 0 ? parsed.locationOrLink : null,
     })
     .eq("id", groupId)
     .eq("owner_id", user.id)
