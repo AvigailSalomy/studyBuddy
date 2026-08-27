@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { JoinRequestButton } from "@/components/join-request-button";
 import { LeaveGroupButton } from "@/components/leave-group-button";
+import { DeleteGroupButton } from "@/components/delete-group-button";
 import { GROUP_TYPE_LABELS, type GroupDetailData } from "@/types/group";
 
 // Owner/member-count/created-date live in the Overview tab's Group Info
@@ -70,6 +71,7 @@ export function GroupHeader({
                 Edit group
               </Link>
             )}
+            {isOwner && <DeleteGroupButton groupId={group.id} />}
             {!isMember &&
               (hasPendingRequest ? (
                 <Badge variant="warning" className="px-3 py-1.5">

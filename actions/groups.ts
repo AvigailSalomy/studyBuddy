@@ -9,6 +9,7 @@ type ActionResult =
   | { success: false; error: string };
 
 type LeaveResult = { success: true } | { success: false; error: string };
+type DeleteResult = { success: true } | { success: false; error: string };
 
 // Both createGroup and updateGroup parse a GroupInput this same way, so
 // the shape/target-year handling is factored out rather than duplicated.
@@ -230,5 +231,92 @@ export async function leaveGroup(groupId: string): Promise<LeaveResult> {
 
   revalidatePath("/dashboard");
   revalidatePath(`/groups/${groupId}`);
+  return { success: true };
+}
+
+// Owner-only, irreversible. group_members/join_requests/materials/
+// chat_messages/meetings/tasks all cascade-delete at the DB level once
+// the groups row is gone (ON DELETE CASCADE on group_id, see
+// initial_schema.sql) -- but that cascade never touches Supabase
+// Storage, which is a separate system with no FK to public.materials.
+// So Storage objects must be removed first, while the group row (and
+// therefore is_group_owner()) still exists to authorize it: the
+// materials_bucket_delete_uploader_or_owner policy checks
+// is_group_owner(groupId) by looking up public.groups, which would
+// stop resolving the instant the group row is deleted. Deleting the
+// group row first would strand the files with no permission path left
+// to ever clean them up. If Storage cleanup fails, the group row is
+// deliberately left intact rather than risking orphaned files.
+export async function deleteGroup(groupId: string): Promise<DeleteResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "You must be logged in." };
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("owner_id")
+    .eq("id", groupId)
+    .maybeSingle();
+
+  if (groupError) {
+    return { success: false, error: groupError.message };
+  }
+
+  if (!group) {
+    return { success: false, error: "Group not found." };
+  }
+
+  if (group.owner_id !== user.id) {
+    return {
+      success: false,
+      error: "Only the group owner can delete this group.",
+    };
+  }
+
+  const { data: files, error: listError } = await supabase.storage
+    .from("materials")
+    .list(groupId, { limit: 1000 });
+
+  if (listError) {
+    return { success: false, error: listError.message };
+  }
+
+  if (files && files.length > 0) {
+    const paths = files.map((file) => `${groupId}/${file.name}`);
+    const { error: removeError } = await supabase.storage
+      .from("materials")
+      .remove(paths);
+
+    if (removeError) {
+      return { success: false, error: removeError.message };
+    }
+  }
+
+  // .eq("owner_id", user.id) is redundant with the groups_delete_owner
+  // RLS policy, but kept explicit as defense in depth -- same pattern
+  // as updateGroup/leaveGroup above.
+  const { data: deleted, error: deleteError } = await supabase
+    .from("groups")
+    .delete()
+    .eq("id", groupId)
+    .eq("owner_id", user.id)
+    .select("id")
+    .single();
+
+  if (deleteError || !deleted) {
+    return {
+      success: false,
+      error:
+        deleteError?.message ??
+        "You don't have permission to delete this group.",
+    };
+  }
+
+  revalidatePath("/dashboard");
   return { success: true };
 }
