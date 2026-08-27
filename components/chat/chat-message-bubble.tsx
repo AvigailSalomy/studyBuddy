@@ -17,7 +17,10 @@ export function ChatMessageBubble({
   // so this has the same SSR/hydration exposure as MeetingTimeDisplay --
   // suppressHydrationWarning for the same reason (viewer-local time is
   // expected to legitimately differ between server and client render).
-  const time = new Date(message.created_at).toLocaleTimeString("en-GB", {
+  const timestamp = new Date(message.created_at).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -48,7 +51,7 @@ export function ChatMessageBubble({
         className="px-1 text-[11px] text-muted-foreground"
         suppressHydrationWarning
       >
-        {time}
+        {timestamp}
       </span>
     </div>
   );
