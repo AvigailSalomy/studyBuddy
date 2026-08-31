@@ -5,6 +5,10 @@
 
 # Testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 
 # Next.js
 /.next/
@@ -16,10 +20,15 @@
 # Environment variables
 .env*
 !.env.local.example
+!.env.test.local.example
 
 # macOS
 .DS_Store
 *.pem
+
+# Microsoft Office temporary lock files (created while a .docx/.xlsx/
+# .pptx is open on someone's machine, e.g. ~$ESENTATION_..._GUIDE.docx)
+~$*
 
 # Debug logs
 npm-debug.log*
