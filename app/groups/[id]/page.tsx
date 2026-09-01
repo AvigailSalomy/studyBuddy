@@ -15,6 +15,7 @@ import type { MaterialRow } from "@/types/material";
 import type { TaskRow } from "@/types/task";
 import type { MeetingRow } from "@/types/meeting";
 import type { ChatMessageRow } from "@/types/chat";
+import { upcomingMeetingsCutoffIso } from "@/lib/datetime";
 
 export default async function GroupDetailPage({
   params,
@@ -185,7 +186,7 @@ export default async function GroupDetailPage({
               "id, title, meeting_time, location_or_link, created_by, creator:profiles!created_by(id, full_name)",
             )
             .eq("group_id", id)
-            .gt("meeting_time", new Date().toISOString())
+            .gt("meeting_time", upcomingMeetingsCutoffIso())
             .order("meeting_time", { ascending: true })
             .returns<MeetingRow[]>(),
           // Latest 50, newest first -- the only way to get the *latest*

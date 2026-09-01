@@ -21,6 +21,7 @@ import type {
   DashboardGroupPreviewRow,
 } from "@/types/dashboard";
 import type { UnreadGroupSummary } from "@/types/chat";
+import { upcomingMeetingsCutoffIso } from "@/lib/datetime";
 
 type DashboardSearchParams = {
   course?: string;
@@ -308,7 +309,7 @@ async function DashboardHomeView({
           "id, title, meeting_time, location_or_link, group:groups(id, name)",
           { count: "exact" },
         )
-        .gt("meeting_time", new Date().toISOString())
+        .gt("meeting_time", upcomingMeetingsCutoffIso())
         .order("meeting_time", { ascending: true })
         .limit(5)
         .returns<DashboardMeetingRow[]>(),

@@ -6,6 +6,7 @@ import {
   meetingDetailsSchema,
   type MeetingDetailsInput,
 } from "@/schemas/meetings";
+import { isMeetingTimeInFuture } from "@/lib/datetime";
 
 type ActionResult = { success: true } | { success: false; error: string };
 
@@ -28,7 +29,10 @@ async function isGroupMember(
 // meetingTime arrives as an already-UTC ISO instant (converted
 // client-side from the browser's local datetime-local value -- see
 // lib/datetime.ts), so this comparison is timezone-safe regardless of
-// which timezone this server happens to be running in.
+// which timezone this server happens to be running in. The check itself
+// (and its submission-latency grace period) lives in
+// isMeetingTimeInFuture -- see lib/datetime.ts for why a strict `> now`
+// comparison here isn't enough on its own.
 function parseMeetingDetails(input: MeetingDetailsInput) {
   const parsed = meetingDetailsSchema.safeParse(input);
   if (!parsed.success) {
@@ -40,8 +44,7 @@ function parseMeetingDetails(input: MeetingDetailsInput) {
 
   const { title, meetingTime, locationOrLink } = parsed.data;
 
-  const parsedTime = new Date(meetingTime);
-  if (parsedTime.getTime() <= Date.now()) {
+  if (!isMeetingTimeInFuture(meetingTime)) {
     return { ok: false as const, error: "Meeting time must be in the future." };
   }
 
